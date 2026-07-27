@@ -29,17 +29,6 @@ final class KeyboardModel: ObservableObject {
     @Published var showsKeyboardName: Bool = false
     /// The in-keyboard settings panel (opened by the gear key) is visible.
     @Published var showsSettings: Bool = false
-    /// Where the hard sign «ъ» lives; user-selectable, persisted in the
-    /// extension's own UserDefaults.
-    @Published var layoutVariant: LayoutVariant =
-        LayoutVariant(rawValue: UserDefaults.standard.string(forKey: KeyboardModel.layoutVariantKey) ?? "") ?? .classic
-
-    private static let layoutVariantKey = "layoutVariant"
-
-    func setLayoutVariant(_ variant: LayoutVariant) {
-        layoutVariant = variant
-        UserDefaults.standard.set(variant.rawValue, forKey: Self.layoutVariantKey)
-    }
 
     /// User-adjustable behavior (settings panel, Phase 2); defaults keep the
     /// pre-settings behavior.
@@ -682,7 +671,7 @@ final class KeyboardModel: ObservableObject {
     func rows(needsGlobe: Bool) -> [[KeyCap]] {
         let main: [[KeyCap]]
         switch page {
-        case .letters: main = KeyboardLayout.letterRows(variant: layoutVariant)
+        case .letters: main = KeyboardLayout.letterRows
         case .numbers: main = KeyboardLayout.numberRows
         case .symbols: main = KeyboardLayout.symbolRows
         case .emoji:   return []
@@ -693,13 +682,10 @@ final class KeyboardModel: ObservableObject {
     private func bottomRow(needsGlobe: Bool) -> [KeyCap] {
         switch page {
         case .letters:
-            // The gear opens the in-keyboard settings panel; «ъ» sits next
-            // to the space bar in the classic variant and moves to the top
-            // letter row in the topRow variant
+            // The gear opens the in-keyboard settings panel
             var row: [KeyCap] = [.numbers, .settings, .emoji]
             if needsGlobe { row.append(.globe) }
             row.append(.space)
-            if layoutVariant == .classic { row.append(.character("ъ")) }
             row.append(.return)
             return row
         case .numbers, .symbols:

@@ -7,19 +7,18 @@
 //  Single source of truth for key definitions, labels, callouts, and sizing.
 //  To add or reorder keys, edit letterRows only.
 //
-//  TODO(Avar): everything in this file is the layout inherited from the
-//  Lezgi keyboard and is kept unchanged on purpose. When the Avar language
-//  data is ready, replace here:
-//    - letterRows / baseLetterRows  → Avar letter layout
-//    - callouts                     → Avar long-press alternates
-//    - space / return key labels    → Avar words (label(for:), returnLabel(for:))
+//  TODO(Avar): localization review — the space / return key labels
+//  (label(for:), returnLabel(for:)) are still the inherited wording and
+//  need Avar translations.
 //
 
 import SwiftUI
 
 /// What a key does when tapped.
-/// .character("ӏ") inserts Cyrillic Palochka (U+04CF) — the correct Unicode character for the bar letter.
-/// lezgi_words.sqlite uses the same Cyrillic palochka, so queries need no normalization.
+/// .character("Ӏ") inserts Cyrillic Palochka (U+04C0) — the caseless bar
+/// letter as conventionally typed in Avar text. `lowercased()` maps it to
+/// the lowercase palochka `ӏ` (U+04CF), which is the form the dictionary
+/// lookups and the learning store normalize to.
 enum KeyCap: Equatable {
     case character(String)
     case shift
@@ -38,34 +37,19 @@ enum KeyboardPage {
     case letters, numbers, symbols, emoji
 }
 
-/// Where the hard sign «ъ» lives — user-selectable in the settings panel.
-enum LayoutVariant: String {
-    case classic   // ъ in the bottom row next to the space bar (default)
-    case topRow    // ъ as the 12th key of the top letter row
-}
-
 enum KeyboardLayout {
 
-    // MARK: - Letter rows
+    // MARK: - Letter rows (fixed Avar layout)
     //
     // ↓↓↓  ADD OR REORDER KEYS HERE ONLY  ↓↓↓
-    private static let baseLetterRows: [[KeyCap]] = [
-        ["й","ц","у","к","е","н","г","ш","ӏ","з","х"].map { .character($0) },  // 11 keys
-        ["ф","ы","в","а","п","р","о","л","д","ж","э"].map { .character($0) },  // 11 keys
+    static let letterRows: [[KeyCap]] = [
+        ["й","ц","у","к","е","н","г","ш","щ","з","х"].map { .character($0) },  // 11 keys
+        ["ъ","Ӏ","в","а","п","р","о","л","д","ж","э"].map { .character($0) },  // 11 keys
         [.shift]
             + ["я","ч","с","м","и","т","ь","б","ю"].map { KeyCap.character($0) }
             + [.backspace],
     ]
     // ↑↑↑  -----------------------------------  ↑↑↑
-
-    /// Letter rows for the chosen variant: `.classic` keeps «ъ» in the
-    /// bottom row (added by `KeyboardModel.bottomRow`), `.topRow` appends it
-    /// to the top letter row as a 12th key.
-    static func letterRows(variant: LayoutVariant) -> [[KeyCap]] {
-        var rows = baseLetterRows
-        if variant == .topRow { rows[0].append(.character("ъ")) }
-        return rows
-    }
 
     // MARK: - Number page ("123") — standard iOS set
     static let numberRows: [[KeyCap]] = [
@@ -82,23 +66,23 @@ enum KeyboardLayout {
     ]
 
     // MARK: - Long-press callouts (Step 3)
-    // Alternates are inserted as a whole string (e.g. "цӏ" = ц + palochka U+04CF).
+    // Alternates are inserted as a whole string (e.g. "цӀ" = ц + palochka U+04C0).
     static let callouts: [String: [String]] = [
-        "ц": ["цӏ"],
-        "у": ["уь"],
-        "к": ["кӏ", "кь", "къ"],
+        "ц": ["цӀ"],
+        "к": ["кӀ", "къ", "кь"],
         "е": ["ё"],
-        "г": ["гь", "гъ"],
-        "ш": ["щ"],
-        "х": ["хь", "хъ"],
-        "п": ["пӏ"],
-        "ч": ["чӏ"],
-        "т": ["тӏ"],
+        "г": ["гӀ", "гъ", "гь"],
+        "х": ["хӀ", "хъ", "хь"],
+        "п": ["ф"],
+        "л": ["лъ", "лӀ"],
+        "ч": ["чӀ"],
+        "и": ["ы"],
+        "т": ["тӀ"]
     ]
 
     // MARK: - Case helpers
 
-    /// Capitalizes only the first character — correct for digraphs: "къ" → "Къ", "цI" → "ЦI".
+    /// Capitalizes only the first character — correct for digraphs: "къ" → "Къ", "лъ" → "Лъ".
     static func capitalizedFirst(_ s: String) -> String {
         guard let f = s.first else { return s }
         return String(f).uppercased() + s.dropFirst()
@@ -146,7 +130,7 @@ enum KeyboardLayout {
     // MARK: - Return key
 
     /// Action label for the return key, in the keyboard's language
-    /// (inherited Lezgi — see TODO(Avar) above). `.search` is empty on
+    /// (inherited wording — see the TODO(Avar) header note). `.search` is empty on
     /// purpose: it renders as the universal magnifying-glass icon — the
     /// correct translation («Жагъурун») is too long for a key, and the
     /// icon is the familiar convention on modern keyboards. An empty

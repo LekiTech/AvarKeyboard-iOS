@@ -10,8 +10,7 @@
 			<false/>
 			<key>PrefersRightToLeft</key>
 			<false/>
-			<!-- Avar (ISO 639-2/3). The layout data itself is still the inherited
-			     Lezgi layout — see TODO(Avar) markers in KeyboardLayout.swift. -->
+			<!-- Avar (ISO 639-2/3) -->
 			<key>PrimaryLanguage</key>
 			<string>ava</string>
 			<key>RequestsOpenAccess</key>

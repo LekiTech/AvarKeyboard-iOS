@@ -3,9 +3,9 @@
 //  AvarKeyboardExtension
 //
 //  Slide-up settings panel inside the keyboard (Phase 1 of the settings
-//  plan), opened by the gear key in the bottom row. Pages: home, layout
-//  variant, learned-words dictionary, about. Everything stays inside the
-//  keyboard extension — no UIKit alerts, no modal presentation; the
+//  plan), opened by the gear key in the bottom row. Pages: home, input
+//  behavior, theme, learned-words dictionary, about. Everything stays inside
+//  the keyboard extension — no UIKit alerts, no modal presentation; the
 //  delete-all confirmation is an in-panel sheet.
 //
 
@@ -52,7 +52,7 @@ struct SettingsPanelView: View {
     var onResetAll: (() -> Void)? = nil
 
     private enum Page {
-        case home, layout, input, theme, dictionary, about
+        case home, input, theme, dictionary, about
     }
 
     @State private var stack: [Page] = [.home]
@@ -76,7 +76,6 @@ struct SettingsPanelView: View {
                     VStack(alignment: .leading, spacing: 14) {
                         switch page {
                         case .home:       homePage
-                        case .layout:     layoutPage
                         case .input:      inputPage
                         case .theme:      themePage
                         case .dictionary: dictionaryPage
@@ -100,7 +99,6 @@ struct SettingsPanelView: View {
     private var title: String {
         switch page {
         case .home:       return ""
-        case .layout:     return "Раскладка"
         case .input:      return "Кхьин"
         case .theme:      return "Тема"
         case .dictionary: return "Гафарган"
@@ -157,10 +155,6 @@ struct SettingsPanelView: View {
             .padding(.horizontal, 2)
 
             group {
-                navRow(icon: "keyboard", title: "Раскладка",
-                       value: model.layoutVariant == .classic ? "Ъ — арадин къвалаг" : "Ъ — вини жергеда",
-                       page: .layout)
-                divider
                 navRow(icon: "slider.horizontal.3", title: "Кхьин",
                        value: nil, page: .input)
                 divider
@@ -174,25 +168,6 @@ struct SettingsPanelView: View {
             group {
                 navRow(icon: "info.circle", title: "Клавиатурадикай",
                        value: "1.2.0", page: .about)
-            }
-        }
-    }
-
-    private var layoutPage: some View {
-        Group {
-            sectionLabel("Кӏеви лишандин («ъ») чка")
-            group {
-                radioRow(title: "Арадин къвалаг",
-                         subtitle: "Вини жергеда 11 клавиша",
-                         selected: model.layoutVariant == .classic) {
-                    model.setLayoutVariant(.classic)
-                }
-                divider
-                radioRow(title: "Вини жергеда",
-                         subtitle: "«ъ» — «х»-дин къвалаг",
-                         selected: model.layoutVariant == .topRow) {
-                    model.setLayoutVariant(.topRow)
-                }
             }
         }
     }
