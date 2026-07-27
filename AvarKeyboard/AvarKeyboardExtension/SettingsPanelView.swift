@@ -207,8 +207,8 @@ struct SettingsPanelView: View {
                           subtitle: String(localized: "Cursor control with the space bar"),
                           binding: binding(\.spaceCursor))
                 divider
-                toggleRow(title: "Арадал «лезг»",
-                          subtitle: String(localized: "Show «лезг» on the space bar"),
+                toggleRow(title: "Арадал «авар»",
+                          subtitle: String(localized: "Show «авар» on the space bar"),
                           binding: binding(\.spaceLabel))
             }
 
@@ -356,7 +356,7 @@ struct SettingsPanelView: View {
     private var aboutPage: some View {
         Group {
             VStack(spacing: 8) {
-                Text(verbatim: "Л")
+                Text(verbatim: "А")
                     .font(.system(size: 28, weight: .heavy))
                     .foregroundColor(.white)
                     .frame(width: 56, height: 56)

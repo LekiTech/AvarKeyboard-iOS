@@ -9,9 +9,11 @@ import Foundation
 import SQLite3
 
 /// Prefix lookup in the bundled `lezgi_words.sqlite` dictionary.
-/// The dictionary and the typed text both use the Cyrillic palochka `ӏ`
-/// (U+04CF) and are fully lowercase, so the lowercased prefix matches
-/// byte-for-byte — no normalization needed.
+/// The dictionary stores fully lowercase words with the lowercase Cyrillic
+/// palochka `ӏ` (U+04CF). Typed text carries the capital palochka `Ӏ`
+/// (U+04C0) from the layout; every lookup lowercases first, and Unicode
+/// case mapping folds U+04C0 to U+04CF, so queries match byte-for-byte
+/// with no further normalization.
 ///
 /// TODO(Avar): the bundled dictionary is still the inherited Lezgi one.
 /// Replace it with `avar_words.sqlite` (same single-table schema:

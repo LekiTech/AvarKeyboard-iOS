@@ -1,8 +1,12 @@
 > **Note (Avar Keyboard).** This document is inherited unchanged from the
-> Lezgi Keyboard project, whose engine this app reuses. Everything about
-> the architecture and behavior applies to Avar Keyboard as well; language
-> examples and names still refer to Lezgi until the Avar language data
-> lands (see the TODO(Avar) markers in the code).
+> Lezgi Keyboard project, whose engine this app reuses. The architecture
+> and behavior described here apply to Avar Keyboard as well, with two
+> caveats: the letter rows and long-press callouts are now the fixed Avar
+> layout in `KeyboardLayout.swift`, and the hard-sign position option
+> (`LayoutVariant`, the «ъ» quick-switch menu and its settings page) has
+> been removed. Language examples and names in the text still refer to
+> Lezgi; the remaining Avar resources are tracked by TODO(Avar) markers
+> in the code.
 
 # Android Port Context — Lezgi Keyboard
 

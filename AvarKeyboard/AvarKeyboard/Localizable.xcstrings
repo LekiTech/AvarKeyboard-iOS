@@ -172,18 +172,18 @@
         }
       }
     },
-    "Palochka and digraphs like цӏ, къ, уь are one long press away" : {
+    "Palochka and digraphs like цӀ, къ, лъ are one long press away" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Palochka and digraphs like цӏ, къ, уь are one long press away"
+            "value" : "Palochka and digraphs like цӀ, къ, лъ are one long press away"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Палочка и диграфы — цӏ, къ, уь — через долгое нажатие"
+            "value" : "Палочка и диграфы — цӀ, къ, лъ — через долгое нажатие"
           }
         }
       }

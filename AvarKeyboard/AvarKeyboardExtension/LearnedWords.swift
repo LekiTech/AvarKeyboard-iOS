@@ -10,8 +10,9 @@
 //
 //  Learning is fully language-agnostic: words and bigrams are learned from
 //  whatever the user types, with no dependency on the bundled dictionary.
-//  TODO(Avar): if pre-seeded Avar bigram data is ever shipped, it plugs in
-//  here as a read-only companion to the learned `user_bigram` table.
+//  TODO(Avar): if a pre-seeded Avar learning corpus or bigram data is ever
+//  shipped, it plugs in here as a read-only companion to the learned
+//  word and `user_bigram` tables.
 //
 
 import Foundation

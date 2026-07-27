@@ -3,20 +3,20 @@
 A native iOS keyboard for the Avar language (авар мацӏ) with a sticker pack
 of a friendly eagle in a papakha — developed by [LekiTech](https://github.com/LekiTech).
 
-> **Project status.** This project is a full clone of the
-> [Lezgi Keyboard](https://github.com/LekiTech) codebase with a new identity
-> (Avar Keyboard, `org.lekitech.avarkeyboard`). The keyboard engine,
-> suggestions, on-device learning, emoji, stickers, themes, settings, and
-> localization system are fully functional. The **language data is still the
-> inherited Lezgi data** — every place that needs Avar data is marked with a
-> `TODO(Avar)` comment:
+> **Project status.** This project reuses the engine of the
+> [Lezgi Keyboard](https://github.com/LekiTech) codebase under a new identity
+> (Avar Keyboard, `org.lekitech.avarkeyboard`). The **fixed Avar layout and
+> long-press callouts are in place** (`AvarKeyboardExtension/KeyboardLayout.swift`),
+> and the keyboard engine, suggestions, on-device learning, emoji, stickers,
+> themes, settings, and localization system are fully functional. The
+> remaining Avar resources are marked with `TODO(Avar)` comments:
 >
-> - keyboard layout and long-press callouts — `AvarKeyboardExtension/KeyboardLayout.swift`
 > - built-in dictionary (`avar_words.sqlite`) — `AvarKeyboardExtension/WordSuggestions.swift`
-> - bigram seed data (optional) — `AvarKeyboardExtension/LearnedWords.swift`
-> - in-keyboard UI strings and emoji category titles — `KeyboardView.swift`,
+>   (the bundled dictionary is temporarily still the inherited Lezgi one)
+> - learning corpus / bigram seed data (optional) — `AvarKeyboardExtension/LearnedWords.swift`
+> - localization review: in-keyboard UI strings, key labels, and emoji
+>   category titles — `KeyboardLayout.swift`, `KeyboardView.swift`,
 >   `SettingsPanelView.swift`, `EmojiData.swift` / `scripts/gen_emoji.py`
-> - onboarding copy — `AvarKeyboard/ContentView.swift` and the string catalogs
 > - sticker artwork ("lezginka", "lezgiflag") — `StickerSharing.swift`,
 >   `scripts/gen_stickers.swift`, `scripts/gen_messenger_stickers.py`
 

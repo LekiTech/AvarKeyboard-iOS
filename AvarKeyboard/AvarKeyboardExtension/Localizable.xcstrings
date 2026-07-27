@@ -104,19 +104,19 @@
         }
       }
     },
-    "Show «лезг» on the space bar" : {
-      "comment" : "Settings subtitle under «Арадал «лезг»»",
+    "Show «авар» on the space bar" : {
+      "comment" : "Settings subtitle under «Арадал «авар»»",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Show «лезг» on the space bar"
+            "value" : "Show «авар» on the space bar"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Показывать «лезг» на пробеле"
+            "value" : "Показывать «авар» на пробеле"
           }
         }
       }
