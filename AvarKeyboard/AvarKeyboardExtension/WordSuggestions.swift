@@ -1,0 +1,78 @@
+//
+//  WordSuggestions.swift
+//  AvarKeyboardExtension
+//
+//  Created by Enver Eskendarov on 6/28/26.
+//
+
+import Foundation
+import SQLite3
+
+/// Prefix lookup in the bundled `lezgi_words.sqlite` dictionary.
+/// The dictionary and the typed text both use the Cyrillic palochka `ӏ`
+/// (U+04CF) and are fully lowercase, so the lowercased prefix matches
+/// byte-for-byte — no normalization needed.
+///
+/// TODO(Avar): the bundled dictionary is still the inherited Lezgi one.
+/// Replace it with `avar_words.sqlite` (same single-table schema:
+/// `words(word TEXT PRIMARY KEY ASC)`, lowercase, Cyrillic palochka) and update the
+/// resource name below. The class itself is language-agnostic, and the
+/// failable init means the keyboard — including on-device word and bigram
+/// learning — keeps working even with no bundled dictionary at all.
+final class WordSuggestions {
+    private var db: OpaquePointer?
+    private var stmt: OpaquePointer?
+
+    init?() {
+        // TODO(Avar): swap "lezgi_words" → "avar_words" once the Avar
+        // dictionary is generated.
+        guard let url = Bundle(for: WordSuggestions.self)
+            .url(forResource: "lezgi_words", withExtension: "sqlite") else { return nil }
+        guard sqlite3_open_v2(url.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else { return nil }
+        let sql = "SELECT word FROM words WHERE word LIKE ? ORDER BY LENGTH(word) LIMIT 3"
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return nil }
+    }
+
+    func suggestions(for prefix: String) -> [String] {
+        guard !prefix.isEmpty, let stmt else { return [] }
+        let pattern = prefix.lowercased() + "%"
+        sqlite3_reset(stmt)
+        sqlite3_bind_text(stmt, 1, (pattern as NSString).utf8String, -1, nil)
+        var results: [String] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let c = sqlite3_column_text(stmt, 0) { results.append(String(cString: c)) }
+        }
+        return results
+    }
+
+    /// Exact-word membership — the same normalization rule as
+    /// `suggestions(for:)`: the table stores lowercase words with the
+    /// Cyrillic palochka, so a lowercased comparison is byte-exact.
+    func contains(_ word: String) -> Bool {
+        guard !word.isEmpty else { return false }
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, "SELECT 1 FROM words WHERE word = ?1 LIMIT 1",
+                                 -1, &stmt, nil) == SQLITE_OK else { return false }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_text(stmt, 1, (word.lowercased() as NSString).utf8String, -1, nil)
+        return sqlite3_step(stmt) == SQLITE_ROW
+    }
+
+    /// Random dictionary words for the idle suggestion bar. Queried once per
+    /// keyboard appearance, so the scan over the small dictionary is
+    /// imperceptible.
+    func randomWords(_ count: Int) -> [String] {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, "SELECT word FROM words ORDER BY RANDOM() LIMIT ?1",
+                                 -1, &stmt, nil) == SQLITE_OK else { return [] }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_int(stmt, 1, Int32(count))
+        var results: [String] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let c = sqlite3_column_text(stmt, 0) { results.append(String(cString: c)) }
+        }
+        return results
+    }
+
+    deinit { sqlite3_finalize(stmt); sqlite3_close(db) }
+}
