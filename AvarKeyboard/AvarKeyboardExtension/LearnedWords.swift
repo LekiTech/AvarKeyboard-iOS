@@ -219,7 +219,14 @@ final class LearnedWords {
             exec("DELETE FROM user_bigram WHERE count = 0")
             exec("UPDATE meta SET value = 0 WHERE key = 'total_events'")
             prune()
-            exec("VACUUM")
+            // No VACUUM here on purpose. It rewrote the whole file on the
+            // keystroke that happened to be the 2000th learn event — the
+            // only unbounded operation on the interactive path — and bought
+            // ~302 KB on a ~6.2 MB database. Measured over 40 000 events,
+            // the file plateaus without it and the freelist stays at one
+            // page, because decay and prune leave a steady state SQLite
+            // already reuses. See docs/VACUUM_PROPOSAL.md and
+            // scripts/bench_vacuum.py.
         } else if events % Self.pruneCheckEvery == 0 {
             prune()
         }

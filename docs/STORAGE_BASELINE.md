@@ -104,7 +104,8 @@ each with its own normalization), and the view renders it in «…».
 - `total_events += 1`
 - every **2000** events: halve `count` and `picked`, delete rows that fall
   to zero, halve bigram counts, delete zeroed pairs, reset the counter,
-  `prune()`, then **`VACUUM`**
+  `prune()`. (A synchronous `VACUUM` used to run here; it was removed —
+  see docs/VACUUM_PROPOSAL.md.)
 - otherwise every **200** events: `prune()`
 
 `prune()` trims to `maxWords = 5000` / `maxBigrams = 10000`, deleting the
@@ -125,13 +126,13 @@ falls back to idle.
 Per completed word, `learn` adds an upsert, a bigram upsert, and the
 `maintain()` bookkeeping.
 
-**The one real hazard: `VACUUM` runs inline on the typing path** every 2000
-learn events. `VACUUM` rewrites the whole database file and cannot be
-interrupted; it holds the write lock and blocks the keystroke that happened
-to trigger it. It has not been reported as a user-visible stall, and the
-database is small, but it is the only unbounded operation in the input path.
-Recorded here as a known risk; not changed in Phase 1, because Phase 1 is
-not allowed to alter released behavior.
+**Resolved:** a synchronous `VACUUM` used to run inline here every 2000
+learn events, rewriting the whole file and holding the write lock on
+whichever keystroke triggered it — the only unbounded operation in the
+input path. It was removed after measurement showed the file plateaus
+without it (docs/VACUUM_PROPOSAL.md). The `VACUUM` in `reset()` stays: it
+follows an explicit user action that empties both tables, where compaction
+is both wanted and off the typing path.
 
 Nothing else in the input path touches the disk. There is no background
 queue: all database work happens on the main thread inside the extension.
