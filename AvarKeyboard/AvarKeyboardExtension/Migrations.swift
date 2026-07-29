@@ -37,15 +37,15 @@ enum MigrationOutcome: Equatable {
 enum Migrations {
 
     /// The schema this build understands. Bumped together with a new step.
-    static let targetSchemaVersion = 1
+    static let targetSchemaVersion = 2
 
     // MARK: - Registry
 
     /// Schema changes. Each entry brings the database from `version - 1` to
     /// `version`; they are applied in ascending order, one transaction each.
-    /// Empty until a phase actually needs a schema change — a registry with
-    /// no concrete use is a liability, not an abstraction.
-    static let schemaSteps: [SchemaStep] = []
+    static let schemaSteps: [SchemaStep] = [
+        SchemaStep(version: 2, name: "contribution outbox", apply: createOutbox),
+    ]
 
     /// Content fixes that are not schema changes. Each is idempotent and
     /// gated by its own `meta` marker, so a partially-applied run simply
@@ -110,6 +110,39 @@ enum Migrations {
         }
 
         return .ready
+    }
+
+    // MARK: - Schema step 2: contribution outbox
+
+    /// One row per (kind, key, batch): aggregation happens in place, so the
+    /// table grows with distinct words rather than with keystrokes. Every
+    /// column is a token or an integer — there is deliberately no column a
+    /// sentence could fit into.
+    ///
+    /// `batch_id` participates in the uniqueness key so that a row claimed
+    /// by an in-flight batch is frozen: new events start a fresh unclaimed
+    /// row instead of mutating data an exporter already read. It is NOT NULL
+    /// with an empty-string default because SQLite treats NULLs as distinct
+    /// inside a UNIQUE index — a nullable column would defeat the very
+    /// aggregation this table exists to perform.
+    private static func createOutbox(_ db: OpaquePointer?) -> Bool {
+        SQL.exec(db, """
+            CREATE TABLE IF NOT EXISTS outbox(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                kind TEXT NOT NULL,
+                key TEXT NOT NULL,
+                typed_delta INTEGER NOT NULL DEFAULT 0,
+                picked_delta INTEGER NOT NULL DEFAULT 0,
+                confirmations INTEGER NOT NULL DEFAULT 0,
+                first_seen INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL,
+                batch_id TEXT NOT NULL DEFAULT ''
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_outbox_aggregate
+                ON outbox(kind, key, batch_id);
+            CREATE INDEX IF NOT EXISTS idx_outbox_unclaimed
+                ON outbox(batch_id, id);
+            """)
     }
 
     // MARK: - Data step: purge unlearnable words (historical, frozen)

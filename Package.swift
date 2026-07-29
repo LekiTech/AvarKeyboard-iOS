@@ -27,6 +27,7 @@ let package = Package(
             sources: [
                 "LearnedWords.swift",
                 "Migrations.swift",
+                "ContributionOutbox.swift",
                 "Normalization.swift",
                 "WordSuggestions.swift",
                 "StaticBigrams.swift",

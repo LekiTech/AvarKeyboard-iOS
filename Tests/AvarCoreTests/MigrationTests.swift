@@ -305,4 +305,71 @@ final class MigrationTests: XCTestCase {
         XCTAssertEqual(store.nextWords(after: "кӏарах"), ["чӏукӏ"])
         XCTAssertEqual(rawQuery("SELECT prev FROM user_bigram"), ["кӏарах"])
     }
+
+    // MARK: - Schema step 2: the contribution outbox
+
+    func testSchemaStepTwoAddsTheOutboxToAReleasedDatabase() throws {
+        let now = Int64(Date().timeIntervalSince1970)
+        try makeLegacyDatabase(words: [("хайи", 5, 2, now)],
+                               bigrams: [("зи", "хайи", 4, now)],
+                               markers: ["filters_version": 1, "palochka_fixed": 1])
+
+        let store = try open()
+
+        XCTAssertEqual(store.migrationOutcome, .ready)
+        XCTAssertEqual(rawInt("SELECT value FROM meta WHERE key='schema_version'"), 2)
+        XCTAssertEqual(rawInt("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='outbox'"), 1)
+
+        // The user's data is exactly where it was.
+        XCTAssertEqual(rawInt("SELECT count FROM user_word WHERE word='хайи'"), 5)
+        XCTAssertEqual(rawInt("SELECT picked FROM user_word WHERE word='хайи'"), 2)
+        XCTAssertEqual(rawInt("SELECT COUNT(*) FROM user_bigram"), 1)
+        XCTAssertTrue(store.isRecognized("хайи"))
+    }
+
+    func testTheOutboxStartsEmptyOnAnUpgradedDatabase() throws {
+        let now = Int64(Date().timeIntervalSince1970)
+        try makeLegacyDatabase(words: [("хайи", 50, 30, now), ("кӏвал", 40, 10, now)],
+                               bigrams: [("зи", "хайи", 25, now)],
+                               markers: ["filters_version": 1, "palochka_fixed": 1])
+
+        let store = try open()
+
+        XCTAssertEqual(rawInt("SELECT COUNT(*) FROM outbox"), 0,
+                       "Years of typing history must not be swept into a queue by an upgrade")
+        XCTAssertFalse(store.hasContributionConsent)
+    }
+
+    func testTheSchemaStepIsNotRepeatedOnEveryLaunch() throws {
+        let now = Int64(Date().timeIntervalSince1970)
+        try makeLegacyDatabase(words: [("хайи", 1, 0, now)],
+                               markers: ["filters_version": 1, "palochka_fixed": 1])
+        let store = try open()
+        store.enqueueContribution(kind: .wordDelta, key: "хайи", typedDelta: 3)
+
+        let reopened = try open()
+
+        XCTAssertEqual(reopened.migrationOutcome, .ready)
+        XCTAssertEqual(reopened.pendingContributionCount, 1,
+                       "A rerun of CREATE TABLE would have been harmless; a rerun that "
+                       + "dropped and recreated would not. Neither may happen.")
+        XCTAssertEqual(rawInt("SELECT typed_delta FROM outbox"), 3)
+        XCTAssertEqual(rawInt("SELECT value FROM meta WHERE key='schema_version'"), 2)
+    }
+
+    func testADatabaseAlreadyAtVersionTwoIsLeftAlone() throws {
+        let now = Int64(Date().timeIntervalSince1970)
+        try makeLegacyDatabase(schemaVersion: 2,
+                               words: [("хайи", 5, 0, now)],
+                               markers: ["filters_version": 1, "palochka_fixed": 1])
+
+        // Marked as version 2 but without the table — the shape a build that
+        // was interrupted mid-step could leave behind. The step is not rerun,
+        // so the store must stay usable rather than crash on a missing table.
+        let store = try open()
+        XCTAssertEqual(store.migrationOutcome, .ready)
+        XCTAssertTrue(store.isRecognized("хайи"))
+        store.learn("цӏийи", previous: nil, picked: false)
+        XCTAssertTrue(store.isRecognized("цӏийи"))
+    }
 }

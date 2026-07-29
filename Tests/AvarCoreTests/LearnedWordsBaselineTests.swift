@@ -40,11 +40,13 @@ final class LearnedWordsBaselineTests: XCTestCase {
         _ = try makeStore()
 
         let tables = try queryStrings("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
-        XCTAssertEqual(tables, ["meta", "user_bigram", "user_word"],
-                       "Released schema is exactly these three tables")
+        XCTAssertEqual(tables, ["meta", "outbox", "sqlite_sequence", "user_bigram", "user_word"],
+                       "The three released tables, plus the outbox added by schema step 2 "
+                       + "(and the sqlite_sequence its AUTOINCREMENT implies). The three "
+                       + "released tables must never disappear from this list.")
 
-        XCTAssertEqual(try metaValue("schema_version"), 1,
-                       "Production databases in the field are at schema_version 1")
+        XCTAssertEqual(try metaValue("schema_version"), 2,
+                       "Released databases are at 1; step 2 carries them to 2")
         XCTAssertEqual(try metaValue("total_events"), 0)
         XCTAssertEqual(try metaValue("filters_version"), 1)
         XCTAssertEqual(try metaValue("palochka_fixed"), 1)

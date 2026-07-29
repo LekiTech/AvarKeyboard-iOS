@@ -15,7 +15,9 @@ import SQLite3
 private let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
 final class LearnedWords {
-    private var db: OpaquePointer?
+    /// Internal rather than private so the outbox extension can reach it;
+    /// nothing outside this module sees it.
+    internal var db: OpaquePointer?
 
     private static let schemaVersion = 1
     /// Sanity bound so a pathological token cannot bloat a row.
