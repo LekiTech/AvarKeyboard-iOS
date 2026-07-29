@@ -55,6 +55,9 @@ final class KeyboardModel: ObservableObject {
     var isCapsLock: Bool { shiftState == .capsLock }
 
     private let wordDB = WordSuggestions()
+    /// Corpus-derived context. Ships empty, so every path through it is a
+    /// no-op until a reviewed corpus exists.
+    private let staticBigrams = StaticBigrams()
     private let learned = LearnedWords()
     private var lastSpaceTap: Date? = nil
 
@@ -110,6 +113,29 @@ final class KeyboardModel: ObservableObject {
     /// store — the only ones long-press deletion applies to.
     private(set) var learnedDisplayWords: Set<String> = []
 
+    /// Bundled-dictionary candidates for a prefix, reordered by static
+    /// corpus context when the previous word is known.
+    ///
+    /// The reorder is a **stable** sort on the static weight alone: rows
+    /// without a pair keep weight 0 and therefore keep the order SQLite
+    /// produced (base_score, then length). With the shipped empty artifact
+    /// `weights` is always empty and this returns the SQL order untouched,
+    /// which is what makes the released behavior byte-identical.
+    private func rankedDictionaryWords(for prefix: String, previous: String?) -> [String] {
+        let words = wordDB?.suggestions(for: prefix) ?? []
+        guard let previous, let staticBigrams, !staticBigrams.isEmpty, words.count > 1
+        else { return words }
+        let weights = staticBigrams.weights(after: previous, candidates: words)
+        guard !weights.isEmpty else { return words }
+        return words.enumerated()
+            .sorted { lhs, rhs in
+                let lw = weights[lhs.element] ?? 0
+                let rw = weights[rhs.element] ?? 0
+                return lw == rw ? lhs.offset < rhs.offset : lw > rw
+            }
+            .map(\.element)
+    }
+
     /// The raw typed word currently leading the bar as a literal candidate
     /// because neither the bundled dictionary nor the visible learned words
     /// recognize it. Presentation-only marker: the suggestion value stays
@@ -141,15 +167,28 @@ final class KeyboardModel: ObservableObject {
             // the learned bigrams of the last completed word. When there is
             // no last word (sentence start) or no confident pairs, the bar
             // falls back to the random dictionary words.
-            let nextWords = settings.nextWordSuggestions
+            let personalNext = settings.nextWordSuggestions
                 ? (lastCompletedWord.flatMap { learned?.nextWords(after: $0) } ?? [])
+                : []
+            // Personal context always wins. The bundled corpus only speaks
+            // when personal learning has nothing to say, so a global
+            // statistic can never displace what this user actually types.
+            // With the artifact empty — as shipped — this is unreachable
+            // and the released idle behavior is preserved exactly.
+            let staticNext = (settings.nextWordSuggestions && personalNext.isEmpty)
+                ? (lastCompletedWord.flatMap { staticBigrams?.nextWords(after: $0) } ?? [])
                 : []
             var display: [String] = []
             var learnedSet: Set<String> = []
-            for word in nextWords {
+            for word in personalNext {
                 let form = displayForm(word, prefix: "", proxy: proxy)
                 display.append(form)
-                learnedSet.insert(form)
+                learnedSet.insert(form)   // deletable by long press
+            }
+            for word in staticNext {
+                // Not added to learnedSet: a corpus word is not the user's
+                // to delete.
+                display.append(displayForm(word, prefix: "", proxy: proxy))
             }
             // Entering the idle state (nothing typed, no next words) rolls a
             // fresh random trio, so erasing text never resurfaces the same
@@ -176,12 +215,16 @@ final class KeyboardModel: ObservableObject {
         }
         barWasIdle = false
         fallbackSuggestions = fallbackWords.map { displayForm($0, prefix: "", proxy: proxy) }
-        let learnedWords = learned?.suggestions(for: prefix,
-                                                previous: previousWord(proxy: proxy)) ?? []
+        let previous = previousWord(proxy: proxy)
+        let learnedWords = learned?.suggestions(for: prefix, previous: previous) ?? []
+        // The dictionary tier is reordered by static context BEFORE it is
+        // appended, so context can promote a corpus word among its peers
+        // but never above a personally learned one. The two scales are
+        // never combined arithmetically — see docs/ARTIFACT_CONTRACT.md §4.
+        let dictionaryWords = rankedDictionaryWords(for: prefix, previous: previous)
         var merged = learnedWords
         var seen = Set(merged.map(Self.dedupKey))
-        for word in wordDB?.suggestions(for: prefix) ?? []
-        where seen.insert(Self.dedupKey(word)).inserted {
+        for word in dictionaryWords where seen.insert(Self.dedupKey(word)).inserted {
             merged.append(word)
         }
 
