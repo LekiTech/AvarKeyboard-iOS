@@ -166,7 +166,16 @@ final class LearnedWords {
     /// sidecars, never the database.
     private static func openPeekConnection(path: String) -> OpaquePointer? {
         var handle: OpaquePointer?
+        // Immutable only when NEITHER journal exists. immutable=1 skips
+        // rollback-journal processing too, so a hot -journal (a future
+        // build that switched to DELETE mode and crashed mid-commit) would
+        // make it read torn, uncommitted pages. With a -journal present
+        // the plain read-only open below either reads the committed state
+        // or fails with SQLITE_READONLY_ROLLBACK — and a failed peek falls
+        // through to the read-write open, whose recovery rolls the journal
+        // back before the second-chance version check.
         if !FileManager.default.fileExists(atPath: path + "-wal"),
+           !FileManager.default.fileExists(atPath: path + "-journal"),
            var parts = URLComponents(string: "file://") {
             parts.path = path
             parts.queryItems = [URLQueryItem(name: "immutable", value: "1")]

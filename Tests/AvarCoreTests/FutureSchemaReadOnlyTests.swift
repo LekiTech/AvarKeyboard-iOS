@@ -194,6 +194,27 @@ final class FutureSchemaReadOnlyTests: XCTestCase {
                        "Normalization must not have run")
     }
 
+    func testAJournalFileRoutesThePeekAwayFromImmutable() throws {
+        // immutable=1 skips rollback-journal processing, so a database
+        // sitting next to a -journal must never be opened immutable — a hot
+        // journal would make it read torn, uncommitted pages. With the
+        // journal present the peek takes the plain read-only branch, which
+        // reads the committed state (or fails safely into the read-write
+        // fallback, whose recovery rolls the journal back before the
+        // second-chance version check).
+        try makeFutureDatabase(journalMode: "DELETE")
+        FileManager.default.createFile(atPath: path + "-journal", contents: Data())
+        let before = try fileHash()
+
+        let result = try useStoreEveryWay()
+
+        XCTAssertEqual(result.outcome, .databaseFromFuture(found: 99, supported: Migrations.targetSchemaVersion))
+        XCTAssertEqual(result.suggestions, ["хайи"], "The committed state, not torn pages")
+        XCTAssertEqual(try fileHash(), before)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: path + "-journal"),
+                      "A read-only peek does not clean up journals either")
+    }
+
     // MARK: - The handle itself is read-only
 
     func testTheConnectionRefusesWritesAtTheSQLiteLevel() throws {
