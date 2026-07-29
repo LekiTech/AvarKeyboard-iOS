@@ -26,6 +26,7 @@ let package = Package(
             path: "AvarKeyboard/AvarKeyboardExtension",
             sources: [
                 "LearnedWords.swift",
+                "Normalization.swift",
                 "WordSuggestions.swift",
                 "KeyboardSettings.swift",
                 "KeyboardLayout.swift",
