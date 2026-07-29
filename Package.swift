@@ -38,7 +38,12 @@ let package = Package(
         .testTarget(
             name: "AvarCoreTests",
             dependencies: ["AvarCore"],
-            path: "Tests/AvarCoreTests"
+            path: "Tests/AvarCoreTests",
+            resources: [
+                // Frozen production-shaped databases; see
+                // scripts/make_golden_fixture_v1.py for provenance.
+                .copy("Fixtures"),
+            ]
         ),
     ]
 )
