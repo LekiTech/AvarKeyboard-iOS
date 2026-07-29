@@ -74,6 +74,18 @@ final class LearnedWords {
             .urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let path = dir.appendingPathComponent("learned.sqlite").path
+        // Peek before opening read-write: on the normal path below, the WAL
+        // pragma and the CREATE/INSERT block all write, and a database from
+        // a newer build must not be written AT ALL — not even its journal
+        // mode. When the peek finds a future version the store keeps the
+        // read-only handle, so refusal is enforced by SQLite itself, not
+        // just by the isReadOnly guards.
+        if let future = Self.openReadOnlyIfFromFuture(path: path) {
+            db = future.handle
+            migrationOutcome = .databaseFromFuture(found: future.found,
+                                                   supported: Migrations.targetSchemaVersion)
+            return
+        }
         guard sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nil) == SQLITE_OK else {
             sqlite3_close(db)
             return nil
@@ -104,6 +116,59 @@ final class LearnedWords {
         // one monotonic sequence, one transaction per step. See
         // Migrations.swift.
         migrationOutcome = Migrations.run(on: db)
+    }
+
+    /// Opens `path` read-only just long enough to read `schema_version`.
+    /// Returns the still-open handle when the database was written by a
+    /// newer build; nil when it is current, absent, or unreadable — the
+    /// read-write path then decides, exactly as before.
+    ///
+    /// The unreadable case matters: a crashed newer build can leave a hot
+    /// WAL that a read-only connection cannot recover. The version is then
+    /// unknowable without recovery, so the store falls through to the
+    /// read-write open, lets SQLite recover the journal (content-safe by
+    /// SQLite's own guarantee), and `Migrations.run` still refuses the
+    /// future version logically before any schema or data step runs.
+    private static func openReadOnlyIfFromFuture(path: String) -> (handle: OpaquePointer?, found: Int)? {
+        guard FileManager.default.fileExists(atPath: path),
+              let handle = openPeekConnection(path: path) else { return nil }
+        let found = SQL.int(handle, "SELECT value FROM meta WHERE key = 'schema_version'")
+        guard found > Migrations.targetSchemaVersion else {
+            sqlite3_close(handle)
+            return nil
+        }
+        return (handle, found)
+    }
+
+    /// One read-only connection, chosen to leave the least possible trace.
+    ///
+    /// With no -wal file the main file is complete, and immutable=1 reads it
+    /// with no locks and no journal side effects at all — a plain read-only
+    /// connection to a WAL database would otherwise create the -wal/-shm
+    /// pair just to coordinate. Immutable is safe here because this file has
+    /// exactly one writer, the extension itself, and every same-build
+    /// instance takes this same path. When a -wal IS present its frames are
+    /// authoritative and immutable would read around them, so the plain
+    /// read-only open is used instead; it may touch the coordination
+    /// sidecars, never the database.
+    private static func openPeekConnection(path: String) -> OpaquePointer? {
+        var handle: OpaquePointer?
+        if !FileManager.default.fileExists(atPath: path + "-wal"),
+           var parts = URLComponents(string: "file://") {
+            parts.path = path
+            parts.queryItems = [URLQueryItem(name: "immutable", value: "1")]
+            if let uri = parts.string,
+               sqlite3_open_v2(uri, &handle, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, nil) == SQLITE_OK {
+                return handle
+            }
+            sqlite3_close(handle)
+            handle = nil
+        }
+        if sqlite3_open_v2(path, &handle, SQLITE_OPEN_READONLY, nil) == SQLITE_OK {
+            return handle
+        }
+        sqlite3_close(handle)
+        return nil
     }
 
     /// Result of the migration run. When the database was written by a
