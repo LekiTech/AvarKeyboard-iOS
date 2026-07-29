@@ -20,10 +20,27 @@ class KeyboardViewController: UIInputViewController {
     private var model = KeyboardModel()
     private var hideKeyboardNameWork: DispatchWorkItem?
     private var themeCancellable: AnyCancellable?
+    #if DEBUG
+    /// Phase 1B: samples memory around the page transitions that matter
+    /// (letters ⇄ emoji). Compiled out of Release together with MemoryProbe.
+    private var memoryProbeCancellable: AnyCancellable?
+    #endif
 
     override func viewDidLoad() {
         super.viewDidLoad()
         setupKeyboard()
+        #if DEBUG
+        MemoryProbe.log("viewDidLoad")
+        memoryProbeCancellable = model.$page
+            .removeDuplicates()
+            .sink { page in
+                // One sample per page switch, never per keystroke. The
+                // emoji grid renders lazily, so the interesting number is
+                // how much of the CoreText glyph cache survives coming
+                // back to the letters page.
+                DispatchQueue.main.async { MemoryProbe.log("page=\(page)") }
+            }
+        #endif
         #if DEBUG
         // Local quality metrics baseline (Stage 6): visible in Console.app,
         // category "kb-metrics". Debug builds only; nothing is transmitted.
