@@ -28,6 +28,7 @@ let package = Package(
                 "LearnedWords.swift",
                 "Migrations.swift",
                 "ContributionOutbox.swift",
+                "ContributionBridge.swift",
                 "Normalization.swift",
                 "WordSuggestions.swift",
                 "StaticBigrams.swift",

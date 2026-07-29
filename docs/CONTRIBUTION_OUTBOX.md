@@ -76,9 +76,12 @@ One row per `(kind, key, batch_id)`, counters accumulated in place.
 | `candidate` | canonical word | a word absent from the dictionary |
 | `bigram_delta` | `prev` + U+001F + `word` | an ordered pair, both sides canonical |
 
-U+001F (unit separator) cannot occur in a canonical token, so the bigram key
-is unambiguous — pinned by
-`testTheSeparatorCannotOccurInACanonicalToken`.
+U+001F (unit separator) cannot occur in any VALID token — canonicalization
+alone does not strip it; `isValidToken`'s rejection of control and format
+characters is the gate, and every key half must pass that gate to enter the
+queue. That is what makes the bigram key unambiguous — pinned by
+`testASeparatorBearingTokenCanNeverBeAValidKeyHalf` and
+`testBigramEncodingIsInjective`.
 
 The consequence that matters: **the queue grows with the number of distinct
 words a person uses, never with the number of keystrokes.** A hundred
@@ -205,15 +208,60 @@ enqueue ──► unclaimed ──claim──► batch_id=UUID ──ack──�
   duplicate reply after a crash is harmless. The unclaimed sentinel is
   explicitly refused, so an empty id can never mean "every unclaimed row"
   (`testAcknowledgingTheUnclaimedSentinelCannotWipeTheQueue`).
-* **Release** returns abandoned claims to the queue with counters intact.
-  The old batch id then names no rows, so a *late acknowledgement* of it
-  deletes nothing that has since been re-queued
+* **Release** returns an abandoned claim to the queue with counters
+  intact. The old batch id then names no rows, so a *late acknowledgement*
+  of it deletes nothing that has since been re-queued
   (`testALateAcknowledgementOfAReleasedBatchDeletesNothing`), and a late
-  *upload* of it cannot double-count.
+  *upload* of it cannot double-count. Release is **per batch**
+  (`releaseContributionClaim`): once a batch can have a file on disk,
+  releasing indiscriminately would let a second claim duplicate rows that
+  are already exported. The blanket `releaseStaleContributionClaims()`
+  remains only for tests and for a world with no exports anywhere.
 
 The crash case — killed between claim and acknowledgement — is covered end
 to end by `testAClaimThatNeverCompletedIsRecoveredOnTheNextLaunch`: nothing
 lost, nothing counted twice.
+
+## 8a. The bridge (proof of concept, directory-injected)
+
+`ContributionBridge.swift` implements the file protocol between the
+keyboard and the containing app. **Every function takes the bridge
+directory as a parameter** — nothing in the file knows about App Groups,
+entitlements, or Full Access, so the entire protocol is tested against
+temporary directories while the production container remains a separately
+approved future change.
+
+```
+outbox ──claim──► Contribution/outgoing/<batch>.json     (keyboard writes)
+app reads outgoing ──► Contribution/ack/<batch>.ack      (app writes)
+keyboard sees ack ──► rows deleted, both files removed
+```
+
+* **One writer per file, handoff by rename.** The keyboard writes
+  `outgoing/`, the app writes `ack/`; every write goes to `tmp/` first and
+  is renamed into place — atomic on one volume, so a half-written file is
+  unobservable. No shared writable SQLite anywhere.
+* **The gate, again.** `runContributionBridge` requires the build flag,
+  consent, a writable store, AND `hasFullAccess` (passed as a parameter so
+  policy is testable). An ineligible pass does nothing at all — losing
+  Full Access between claim and export freezes the world; the claim
+  recovers on the next eligible pass.
+* **Format v1**: `{"batch": UUID, "format": 1, "rows": [{kind, key,
+  typed, picked, confirmations}]}` — sorted keys, claim order, byte-
+  identical on retry, no timestamps (§9), nothing about device or person.
+* **Bounds**: at most `maxPendingFiles` (3) exported files — the
+  "containing app never opened" cap; at most `maxBatchBytes` (128 KB) per
+  file, enforced by halving the claim until it fits; exported files
+  ignored past 30 days are withdrawn — file deleted first, then the claim
+  released, so the crash between the two steps leaves only an orphan claim,
+  which is the already-recoverable state.
+* **Recovery**: a claimed batch with no file on disk is released (counters
+  intact); a claimed batch WITH a file is left strictly alone — that
+  asymmetry is what makes duplication impossible in both directions.
+* **The inbox is defensive**: malformed files, id/name mismatches, and
+  unknown format versions are neither acknowledged (an ack deletes the
+  keyboard's rows) nor deleted (not the app's file to delete). Withdrawal
+  of garbage is the keyboard's retention job.
 
 ## 9. Timestamps are local
 
