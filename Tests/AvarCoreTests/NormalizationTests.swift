@@ -157,4 +157,30 @@ extension NormalizationTests {
     func testPipeIsNotRepairedEither() {
         XCTAssertEqual(Normalization.canonical("гаф|"), "гаф|")
     }
+
+    // MARK: - Control and format characters
+
+    /// The contribution outbox joins bigram keys with U+001F, so the
+    /// contract must make a token carrying it invalid — otherwise the
+    /// encoding would be ambiguous.
+    func testTheBigramSeparatorCannotSurviveValidation() {
+        let smuggled = "ва\u{1F}кӏвал"
+        XCTAssertFalse(Normalization.isValidToken(smuggled))
+        XCTAssertFalse(Normalization.isValidToken(Normalization.canonical(smuggled)),
+                       "canonical() does not strip controls; validation is the gate")
+    }
+
+    func testControlAndFormatCharactersInvalidateAToken() {
+        let cases: [(String, String)] = [
+            ("кӏ\u{0000}вал", "NUL"),
+            ("кӏ\u{001F}вал", "unit separator, the bigram key joiner"),
+            ("кӏ\u{200D}вал", "zero-width joiner — two identical-looking tokens"),
+            ("кӏ\u{200C}вал", "zero-width non-joiner"),
+            ("кӏ\u{202E}вал", "right-to-left override"),
+            ("кӏвал\u{00AD}", "soft hyphen"),
+        ]
+        for (token, why) in cases {
+            XCTAssertFalse(Normalization.isValidToken(token), "must be invalid: \(why)")
+        }
+    }
 }

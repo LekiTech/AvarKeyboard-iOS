@@ -76,12 +76,43 @@ enum Contribution {
     /// log. The sentinel is what makes aggregation actually aggregate.
     static let unclaimed = ""
 
-    /// Separator between the halves of a bigram key. A unit separator cannot
-    /// occur in a canonical token, so the key is unambiguous.
+    /// Separator between the halves of a bigram key. U+001F is a control
+    /// character, and `Normalization.isValidToken` rejects every control and
+    /// format character — so no valid token can carry the separator, which
+    /// is what makes the encoding injective: the separator's position in a
+    /// well-formed key is unique, and two different pairs can never encode
+    /// to the same string. `decodeBigramKey` is the enforcement.
     static let keySeparator = "\u{1F}"
 
     static func bigramKey(previous: String, word: String) -> String {
         previous + keySeparator + word
+    }
+
+    /// The exact inverse of `bigramKey`, or nil for anything malformed.
+    ///
+    /// A valid key splits into exactly two halves, each of which is a
+    /// canonical, valid token. Any other shape — zero separators, two
+    /// separators, an invalid or non-canonical half — decodes to nothing
+    /// rather than to a guess.
+    static func decodeBigramKey(_ key: String) -> (previous: String, word: String)? {
+        let halves = key.components(separatedBy: keySeparator)
+        guard halves.count == 2,
+              halves.allSatisfy({ Normalization.isCanonical($0) && Normalization.isValidToken($0) })
+        else { return nil }
+        return (halves[0], halves[1])
+    }
+
+    /// Whether a key may enter the outbox at all. Word keys must be single
+    /// canonical valid tokens; bigram keys must decode. Everything else is
+    /// refused at the door — a non-canonical key would split aggregation
+    /// into parallel rows, and an unparseable one could never be exported.
+    static func isAcceptableKey(_ key: String, for kind: ContributionKind) -> Bool {
+        switch kind {
+        case .wordDelta, .candidate:
+            return Normalization.isCanonical(key) && Normalization.isValidToken(key)
+        case .bigramDelta:
+            return decodeBigramKey(key) != nil
+        }
     }
 }
 
@@ -118,7 +149,7 @@ extension LearnedWords {
                              typedDelta: Int = 0,
                              pickedDelta: Int = 0,
                              now: Date = Date()) {
-        guard !isReadOnly, !key.isEmpty else { return }
+        guard !isReadOnly, Contribution.isAcceptableKey(key, for: kind) else { return }
         let timestamp = Int64(now.timeIntervalSince1970)
         // Aggregation in place. A row already claimed by a batch is left
         // untouched and a fresh unclaimed row starts beside it, so an

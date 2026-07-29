@@ -113,6 +113,15 @@ enum Normalization {
         guard !token.contains(where: \.isNumber) else { return false }
         guard !token.contains("@"), !token.contains("/"), !token.contains(".") else { return false }
         guard !token.contains(where: { $0.isASCII && $0.isLetter }) else { return false }
+        // No control or format characters. Controls (Cc) include U+001F,
+        // which the contribution outbox uses to join bigram keys — a token
+        // that could carry it would make that encoding ambiguous. Formats
+        // (Cf) are the invisibles — ZWJ, ZWNJ, bidi marks — that would let
+        // two identical-looking tokens be different rows.
+        guard !token.unicodeScalars.contains(where: { scalar in
+            let category = scalar.properties.generalCategory
+            return category == .control || category == .format
+        }) else { return false }
         return letterCount(token) >= 2
     }
 }

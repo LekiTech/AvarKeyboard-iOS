@@ -81,8 +81,11 @@ so a word is the same word in all six places.
 3. **Lowercase.** This also maps the uppercase palochka Ӏ (U+04C0) to the
    canonical ӏ (U+04CF).
 4. **Palochka repair**, only inside tokens that contain Cyrillic: `I`, `l`,
-   `i`, `1`, `|`, `І` (U+0406), `і` (U+0456) and `Ӏ` (U+04C0) all become
-   **ӏ (U+04CF)**. The Cyrillic guard keeps genuine Latin borrowings intact.
+   `i`, `І` (U+0406), `і` (U+0456) and `Ӏ` (U+04C0) all become **ӏ (U+04CF)**.
+   The Cyrillic guard keeps genuine Latin borrowings intact. The digit `1`
+   and the pipe `|` are deliberately NOT lookalikes: the keyboard types real
+   digits, and repairing «гаф1» into «гафӏ» would turn a token the learned
+   store must refuse into one it accepts.
 5. **Latin homoglyph repair**, again only inside otherwise-Cyrillic tokens:
    `a c e o p x y k m t b h` → their Cyrillic twins.
 6. **NFC again**, which makes the function idempotent by construction:
@@ -90,9 +93,13 @@ so a word is the same word in all six places.
 
 **Validity of a token** (canonical form assumed): non-empty; ≤64
 characters; no internal whitespace; no digits; none of `@ / .`; no Latin
-letters left after repair; at least two Lezgi letters, where a digraph tail
-(`ӏ`, `ь`, `ъ`) extends the previous letter rather than counting as its own,
-so a lone `цӏ` is one letter and therefore invalid.
+letters left after repair; no control (Cc) or format (Cf) characters —
+controls include U+001F, the contribution outbox's bigram-key separator,
+and formats are the invisibles (ZWJ, bidi marks) that would let two
+identical-looking tokens be distinct rows; at least two Lezgi letters,
+where a digraph tail (`ӏ`, `ь`, `ъ`) extends the previous letter rather
+than counting as its own, so a lone `цӏ` is one letter and therefore
+invalid.
 
 ### What this found in the shipped dictionary
 

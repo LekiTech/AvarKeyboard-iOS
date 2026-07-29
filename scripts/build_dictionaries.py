@@ -119,6 +119,11 @@ def is_unusable(token: str) -> str:
         return "email/path punctuation"
     if any("a" <= ch <= "z" for ch in token):
         return "unrepairable mixed script"
+    # Mirrors Normalization.isValidToken: controls (Cc) include U+001F, the
+    # contribution bigram-key separator; formats (Cf) are the invisibles
+    # that make two identical-looking tokens distinct rows.
+    if any(unicodedata.category(ch) in ("Cc", "Cf") for ch in token):
+        return "control or format character"
     return ""
 
 

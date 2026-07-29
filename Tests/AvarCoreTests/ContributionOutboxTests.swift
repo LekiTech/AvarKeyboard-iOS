@@ -34,6 +34,14 @@ final class ContributionOutboxTests: XCTestCase {
         Date(timeIntervalSince1970: 1_700_000_000 - Double(daysAgo) * 86_400)
     }
 
+    /// Distinct, contract-valid Lezgi tokens for capacity tests — digits
+    /// would be refused at the door, so distinctness comes from letters.
+    private func distinctKey(_ i: Int) -> String {
+        let letters = ["а", "б", "в", "г", "д", "е", "ж", "з", "и", "к"]
+        return "гаф" + letters[i % 10] + letters[(i / 10) % 10]
+            + letters[(i / 100) % 10] + letters[(i / 1000) % 10]
+    }
+
     // MARK: - The gate
 
     func testContributionIsDisabledInShippingBuilds() {
@@ -151,8 +159,9 @@ final class ContributionOutboxTests: XCTestCase {
         store.enqueueContribution(kind: .bigramDelta, key: key, typedDelta: 1)
 
         let rows = store.contributionBatch(try XCTUnwrap(store.claimBatch()))
-        let halves = rows[0].key.components(separatedBy: Contribution.keySeparator)
-        XCTAssertEqual(halves, ["ва", "кӏвал"])
+        let decoded = try XCTUnwrap(Contribution.decodeBigramKey(rows[0].key))
+        XCTAssertEqual(decoded.previous, "ва")
+        XCTAssertEqual(decoded.word, "кӏвал")
     }
 
     func testTheSeparatorCannotOccurInACanonicalToken() {
@@ -160,6 +169,79 @@ final class ContributionOutboxTests: XCTestCase {
         let separator = Character(Contribution.keySeparator)
         for token in ["кӏвал", "хайи", "къуьл", "ва", "цӏиргъ"] {
             XCTAssertFalse(Normalization.canonical(token).contains(separator))
+        }
+    }
+
+    // MARK: - Key contract
+
+    func testWordKeysCarryingTheSeparatorAreRefused() throws {
+        let store = try makeStore()
+        store.enqueueContribution(kind: .wordDelta, key: "ва\u{1F}кӏвал", typedDelta: 1)
+        store.enqueueContribution(kind: .candidate, key: "ва\u{1F}кӏвал", typedDelta: 1)
+        XCTAssertEqual(store.pendingContributionCount, 0,
+                       "A word key that smuggles the separator would forge a bigram")
+    }
+
+    func testNonCanonicalKeysAreRefused() throws {
+        // A non-canonical key would split one word's counters across
+        // parallel rows. By the time a word reaches contribution recording
+        // it has already passed the canonical write path, so a non-canonical
+        // key here is an upstream bug — refused, not silently repaired.
+        let store = try makeStore()
+        store.enqueueContribution(kind: .wordDelta, key: "КӀВАЛ", typedDelta: 1)
+        store.enqueueContribution(kind: .wordDelta, key: "\u{0438}\u{0306}ис", typedDelta: 1)
+        store.enqueueContribution(kind: .wordDelta, key: " кӏвал", typedDelta: 1)
+        XCTAssertEqual(store.pendingContributionCount, 0)
+    }
+
+    func testInvalidTokensAreRefusedAsKeys() throws {
+        let store = try makeStore()
+        for key in ["гаф1", "а", "iphone", "гаф.гаф"] {
+            store.enqueueContribution(kind: .wordDelta, key: key, typedDelta: 1)
+        }
+        XCTAssertEqual(store.pendingContributionCount, 0,
+                       "What the contract would never export must never be queued")
+    }
+
+    func testMalformedBigramKeysAreRefused() throws {
+        let store = try makeStore()
+        let sep = Contribution.keySeparator
+        let malformed = [
+            "кӏвал",                          // no separator: not a pair
+            "ва\(sep)кӏвал\(sep)зи",          // two separators: which pair?
+            "ва\(sep)",                       // empty half
+            "ва\(sep)гаф1",                   // invalid half
+            "ва\(sep)КӀВАЛ",                  // non-canonical half
+        ]
+        for key in malformed {
+            XCTAssertNil(Contribution.decodeBigramKey(key), "must not decode: \(key)")
+            store.enqueueContribution(kind: .bigramDelta, key: key, typedDelta: 1)
+        }
+        XCTAssertEqual(store.pendingContributionCount, 0)
+    }
+
+    func testBigramEncodingIsInjective() {
+        // The classic ambiguity: both pairs concatenate to «вакӏвал», and
+        // only the separator's position tells them apart. Since no valid
+        // token can contain the separator, that position is unique.
+        let a = Contribution.bigramKey(previous: "вакӏ", word: "вал")
+        let b = Contribution.bigramKey(previous: "ва", word: "кӏвал")
+        XCTAssertNotEqual(a, b)
+
+        let decodedA = Contribution.decodeBigramKey(a)
+        let decodedB = Contribution.decodeBigramKey(b)
+        XCTAssertEqual(decodedA?.previous, "вакӏ")
+        XCTAssertEqual(decodedA?.word, "вал")
+        XCTAssertEqual(decodedB?.previous, "ва")
+        XCTAssertEqual(decodedB?.word, "кӏвал")
+    }
+
+    func testDecodingAValidKeyYieldsExactlyItsPair() {
+        let pairs = [("зи", "хайи"), ("кьуьзуь", "цӏийи"), ("къуьл", "чӏал")]
+        for (previous, word) in pairs {
+            let decoded = Contribution.decodeBigramKey(Contribution.bigramKey(previous: previous, word: word))
+            XCTAssertEqual(decoded?.previous, previous)
+            XCTAssertEqual(decoded?.word, word)
         }
     }
 
@@ -247,28 +329,27 @@ final class ContributionOutboxTests: XCTestCase {
         let store = try makeStore()
         // Every key distinct, so aggregation cannot do the bounding here.
         for i in 0..<(Contribution.maxRows + 200) {
-            store.enqueueContribution(kind: .wordDelta, key: "гаф\(i)", typedDelta: 1)
+            store.enqueueContribution(kind: .wordDelta, key: distinctKey(i), typedDelta: 1)
         }
         XCTAssertLessThanOrEqual(store.pendingContributionCount, Contribution.maxRows)
     }
 
     func testPruningKeepsTheMostConfirmedRows() throws {
         let store = try makeStore()
-        store.enqueueContribution(kind: .wordDelta, key: "important", typedDelta: 1)
-        for _ in 0..<20 {
-            store.enqueueContribution(kind: .wordDelta, key: "important", typedDelta: 1)
+        for _ in 0..<21 {
+            store.enqueueContribution(kind: .wordDelta, key: "лезги", typedDelta: 1)
         }
         for i in 0..<(Contribution.maxRows + 100) {
-            store.enqueueContribution(kind: .wordDelta, key: "гаф\(i)", typedDelta: 1)
+            store.enqueueContribution(kind: .wordDelta, key: distinctKey(i), typedDelta: 1)
         }
         let surviving = store.contributionBatch(try XCTUnwrap(store.claimBatch(limit: Contribution.maxRows)))
-        XCTAssertTrue(surviving.contains { $0.key == "important" },
+        XCTAssertTrue(surviving.contains { $0.key == "лезги" },
                       "Pressure must evict the incidental, not the reinforced")
     }
 
     func testClaimedRowsAreNeverPruned() throws {
         let store = try makeStore()
-        store.enqueueContribution(kind: .wordDelta, key: "claimed", typedDelta: 1, now: at(365))
+        store.enqueueContribution(kind: .wordDelta, key: "чӏал", typedDelta: 1, now: at(365))
         let batch = try XCTUnwrap(store.claimBatch())
 
         store.enqueueContribution(kind: .wordDelta, key: "цӏийи", typedDelta: 1, now: at(0))
