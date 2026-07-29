@@ -52,8 +52,12 @@ NEUTRAL_BASE_SCORE = 0
 
 PALOCHKA = "ӏ"          # ӏ CYRILLIC SMALL LETTER PALOCHKA — canonical
 PALOCHKA_UPPER = "Ӏ"    # Ӏ its uppercase form
+# The digit 1 and the pipe are deliberately absent: the runtime half of
+# this contract must not repair them, because the keyboard types real
+# digits and digit-bearing tokens are rejected outright. Kept identical
+# here so the two halves cannot drift.
 PALOCHKA_LOOKALIKES = {
-    "I", "l", "i", "1", "|",
+    "I", "l", "i",
     "І",                # І CYRILLIC CAPITAL LETTER BYELORUSSIAN-UKRAINIAN I
     "і",                # і its lowercase
     PALOCHKA_UPPER,

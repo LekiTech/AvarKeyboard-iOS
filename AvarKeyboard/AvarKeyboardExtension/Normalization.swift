@@ -27,8 +27,14 @@ enum Normalization {
     /// Characters users and source corpora substitute for the palochka.
     /// Repaired only inside tokens that contain Cyrillic, so a genuine
     /// Latin borrowing keeps its "i".
+    /// Deliberately excludes the digit 1 and the pipe: this keyboard types
+    /// real digits, and `isLearnable` rejects digit-bearing tokens, so
+    /// repairing «гаф1» into «гафӏ» would turn a token the store must
+    /// refuse into one it accepts. Corpus sources that use 1-as-palochka
+    /// are a preprocessing concern, not part of the canonical contract —
+    /// and the shipped dictionary contains no such row.
     private static let palochkaLookalikes: Set<Character> = [
-        "I", "l", "i", "1", "|",
+        "I", "l", "i",
         "І",   // U+0406 CYRILLIC CAPITAL LETTER BYELORUSSIAN-UKRAINIAN I
         "і",   // U+0456 its lowercase — found 34 times in the shipped dictionary
         "Ӏ",   // U+04C0 uppercase palochka
@@ -78,6 +84,16 @@ enum Normalization {
         }
         // 6. NFC again so the function is idempotent whatever the repairs did.
         return result.precomposedStringWithCanonicalMapping
+    }
+
+    /// Whether a token is ALREADY in canonical form, compared by scalars.
+    ///
+    /// Swift's `==` is canonical-equivalent, so `decomposed == precomposed`
+    /// is true even though SQLite — which compares bytes — treats them as
+    /// two different rows. Any code deciding whether a stored value needs
+    /// rewriting must use this, not `==`.
+    static func isCanonical(_ token: String) -> Bool {
+        Array(canonical(token).unicodeScalars) == Array(token.unicodeScalars)
     }
 
     /// Lezgi letters in a canonical token, digraphs counted as one.

@@ -58,8 +58,8 @@ final class NormalizationTests: XCTestCase {
 
     func testLatinIAndDigitOneBecomePalochkaInCyrillicTokens() {
         XCTAssertEqual(Normalization.canonical("кIвал"), "кӏвал")
-        XCTAssertEqual(Normalization.canonical("к1вал"), "кӏвал")
         XCTAssertEqual(Normalization.canonical("кlвал"), "кӏвал")
+        // The digit is NOT a lookalike — see testDigitsAreNeverRepaired…
     }
 
     func testLatinOnlyTokensAreLeftAlone() {
@@ -139,5 +139,22 @@ final class NormalizationTests: XCTestCase {
         XCTAssertFalse(Normalization.isValidToken("армуд ар"))
         store.learn("хайи", previous: nil, picked: false)
         XCTAssertTrue(store.isRecognized("хайи"))
+    }
+}
+
+extension NormalizationTests {
+
+    /// Regression: an earlier draft repaired the digit 1 into a palochka,
+    /// which turned «гаф1» — a token the learned store must refuse — into
+    /// the perfectly learnable «гафӏ». The keyboard types real digits, so
+    /// digits are never lookalikes.
+    func testDigitsAreNeverRepairedIntoPalochka() {
+        XCTAssertEqual(Normalization.canonical("гаф1"), "гаф1")
+        XCTAssertFalse(Normalization.isValidToken(Normalization.canonical("гаф1")))
+        XCTAssertEqual(Normalization.canonical("к1вал"), "к1вал")
+    }
+
+    func testPipeIsNotRepairedEither() {
+        XCTAssertEqual(Normalization.canonical("гаф|"), "гаф|")
     }
 }

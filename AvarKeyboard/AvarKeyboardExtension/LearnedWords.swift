@@ -8,12 +8,6 @@
 //  containing app and nothing ever leaves the device. Only individual words
 //  and word pairs are stored, never sentences.
 //
-//  Learning is fully language-agnostic: words and bigrams are learned from
-//  whatever the user types, with no dependency on the bundled dictionary.
-//  TODO(Avar): if a pre-seeded Avar learning corpus or bigram data is ever
-//  shipped, it plugs in here as a read-only companion to the learned
-//  word and `user_bigram` tables.
-//
 
 import Foundation
 import SQLite3
@@ -50,22 +44,20 @@ final class LearnedWords {
     /// longer pass are purged once per bump.
     private static let filtersVersion = 1
 
-    /// Digraph tails taken from the layout's long-press alternates (ӏ, ъ, ь),
-    /// lowercased because the tokens being counted are lowercased while the
-    /// layout's callouts store the palochka in its typed capital form (Ӏ).
+    /// Digraph tails taken from the layout's long-press alternates (ӏ, ь, ъ).
     /// A tail extends the previous letter instead of counting as its own, so
-    /// "цӀ" or "къ" is one letter even though it is two characters.
+    /// "цӏ" or "къ" is one Lezgi letter even though it is two characters.
     private static let digraphTails: Set<Character> = {
         var tails = Set<Character>()
         for alternates in KeyboardLayout.callouts.values {
             for alternate in alternates where alternate.count == 2 {
-                if let tail = alternate.lowercased().last { tails.insert(tail) }
+                if let tail = alternate.last { tails.insert(tail) }
             }
         }
         return tails
     }()
 
-    /// Number of letters in a lowercased token, counting digraphs as
+    /// Number of Lezgi letters in a lowercased token, counting digraphs as
     /// single letters.
     private static func letterCount(_ word: String) -> Int {
         word.reduce(0) { digraphTails.contains($1) ? $0 : $0 + 1 }
@@ -106,28 +98,28 @@ final class LearnedWords {
             INSERT OR IGNORE INTO meta(key, value) VALUES('schema_version', \(Self.schemaVersion));
             INSERT OR IGNORE INTO meta(key, value) VALUES('total_events', 0);
             """)
-        // Records learned before the current filters existed (single letters,
-        // lone digraphs like "цӏ", digits...) are purged once per filter
-        // version bump; the bundled dictionary is a separate read-only
-        // database and is not affected.
-        if intValue("SELECT value FROM meta WHERE key = 'filters_version'") < Self.filtersVersion {
-            purgeUnlearnableWords()
-            exec("INSERT OR REPLACE INTO meta(key, value) VALUES('filters_version', \(Self.filtersVersion))")
-        }
-        // One-time migration: words picked from the pre-migration dictionary
-        // were stored with palochka as Latin "i"; the dictionary now uses
-        // the Cyrillic palochka everywhere, so those rows are rewritten,
-        // merging counters when the ӏ-form already exists.
-        if intValue("SELECT value FROM meta WHERE key = 'palochka_fixed'") < 1 {
-            migrateLatinPalochka()
-            exec("INSERT OR REPLACE INTO meta(key, value) VALUES('palochka_fixed', 1)")
-        }
+        // Every schema and content migration goes through the registry —
+        // one monotonic sequence, one transaction per step. See
+        // Migrations.swift.
+        migrationOutcome = Migrations.run(on: db)
+    }
+
+    /// Result of the migration run. When the database was written by a
+    /// newer build the store keeps serving suggestions but refuses to
+    /// write, rather than corrupting data this code does not understand.
+    private(set) var migrationOutcome: MigrationOutcome = .ready
+
+    /// True when writes are suppressed because the database is newer than
+    /// this build understands.
+    var isReadOnly: Bool {
+        if case .databaseFromFuture = migrationOutcome { return true }
+        return false
     }
 
     deinit { sqlite3_close(db) }
 
     /// Words worth learning: no digits, no email/URL fragments, and at least
-    /// two letters — a lone digraph like "цӏ" is still one letter.
+    /// two Lezgi letters — a lone digraph like "цӏ" is still one letter.
     /// Separators never reach here (the prefix tokenizer splits on them),
     /// but pasted text can still carry such tokens past a space.
     private func isLearnable(_ word: String) -> Bool {
@@ -143,7 +135,13 @@ final class LearnedWords {
     /// chosen from the suggestion bar, which is a stronger signal than
     /// plain typing.
     func learn(_ word: String, previous: String?, picked: Bool) {
-        let w = word.lowercased()
+        // Writes are suppressed for a database from the future.
+        guard !isReadOnly else { return }
+        // Canonical form on the way in, so the store stays canonical by
+        // construction instead of needing the migration re-run forever.
+        // Two of the three learn paths read the host app's text, which may
+        // carry lookalikes or decomposed Unicode.
+        let w = Normalization.canonical(word)
         guard isLearnable(w) else { return }
         let now = Int64(Date().timeIntervalSince1970)
         var stmt: OpaquePointer?
@@ -160,7 +158,7 @@ final class LearnedWords {
         sqlite3_step(stmt)
         sqlite3_finalize(stmt)
 
-        if let prev = previous?.lowercased(), isLearnable(prev) {
+        if let prev = previous.map(Normalization.canonical), isLearnable(prev) {
             var pairStmt: OpaquePointer?
             let pairSQL = """
                 INSERT INTO user_bigram(prev, word, count, last_used) VALUES(?1, ?2, 1, ?3)
@@ -182,7 +180,7 @@ final class LearnedWords {
     /// first (Stage 4 next-word suggestions). Recent pairs get the same
     /// boost as recent words.
     func nextWords(after previous: String, limit: Int = 3) -> [String] {
-        let prev = previous.lowercased()
+        let prev = Normalization.canonical(previous)
         guard !prev.isEmpty else { return [] }
         var stmt: OpaquePointer?
         let sql = """
@@ -232,72 +230,6 @@ final class LearnedWords {
         }
     }
 
-    /// Rewrites learned rows whose palochka is a leftover Latin "i" (words
-    /// picked from the pre-migration dictionary). Counters merge into an
-    /// existing ӏ-form row; purely Latin tokens without Cyrillic letters
-    /// (e.g. borrowed words) are left alone.
-    private func migrateLatinPalochka() {
-        func fixed(_ word: String) -> String? {
-            guard word.contains("i"),
-                  word.unicodeScalars.contains(where: {
-                      (0x0430...0x044F).contains($0.value) || $0.value == 0x04CF
-                  })
-            else { return nil }
-            return word.replacingOccurrences(of: "i", with: "ӏ")
-        }
-
-        var stmt: OpaquePointer?
-        var words: [(old: String, new: String)] = []
-        if sqlite3_prepare_v2(db, "SELECT word FROM user_word WHERE word LIKE '%i%'",
-                              -1, &stmt, nil) == SQLITE_OK {
-            while sqlite3_step(stmt) == SQLITE_ROW {
-                if let c = sqlite3_column_text(stmt, 0) {
-                    let old = String(cString: c)
-                    if let new = fixed(old) { words.append((old, new)) }
-                }
-            }
-        }
-        sqlite3_finalize(stmt)
-        for (old, new) in words {
-            run("""
-                INSERT INTO user_word(word, count, picked, last_used)
-                SELECT ?2, count, picked, last_used FROM user_word WHERE word = ?1
-                ON CONFLICT(word) DO UPDATE SET
-                    count = count + excluded.count,
-                    picked = picked + excluded.picked,
-                    last_used = MAX(last_used, excluded.last_used)
-                """, old, new)
-            run("DELETE FROM user_word WHERE word = ?1", old)
-        }
-
-        var pairStmt: OpaquePointer?
-        var pairs: [(oldPrev: String, oldWord: String, newPrev: String, newWord: String)] = []
-        if sqlite3_prepare_v2(db, "SELECT prev, word FROM user_bigram WHERE prev LIKE '%i%' OR word LIKE '%i%'",
-                              -1, &pairStmt, nil) == SQLITE_OK {
-            while sqlite3_step(pairStmt) == SQLITE_ROW {
-                if let p = sqlite3_column_text(pairStmt, 0),
-                   let w = sqlite3_column_text(pairStmt, 1) {
-                    let oldPrev = String(cString: p), oldWord = String(cString: w)
-                    let newPrev = fixed(oldPrev) ?? oldPrev
-                    let newWord = fixed(oldWord) ?? oldWord
-                    if newPrev != oldPrev || newWord != oldWord {
-                        pairs.append((oldPrev, oldWord, newPrev, newWord))
-                    }
-                }
-            }
-        }
-        sqlite3_finalize(pairStmt)
-        for pair in pairs {
-            run("""
-                INSERT INTO user_bigram(prev, word, count, last_used)
-                SELECT ?3, ?4, count, last_used FROM user_bigram WHERE prev = ?1 AND word = ?2
-                ON CONFLICT(prev, word) DO UPDATE SET
-                    count = count + excluded.count,
-                    last_used = MAX(last_used, excluded.last_used)
-                """, pair.oldPrev, pair.oldWord, pair.newPrev, pair.newWord)
-            run("DELETE FROM user_bigram WHERE prev = ?1 AND word = ?2", pair.oldPrev, pair.oldWord)
-        }
-    }
 
     /// Prepares, binds text parameters in order, and steps a one-shot
     /// statement.
@@ -311,22 +243,6 @@ final class LearnedWords {
         sqlite3_step(stmt)
     }
 
-    /// Deletes every stored word that no longer passes `isLearnable` —
-    /// SQL cannot count letters under the digraph rule, so the check runs in Swift.
-    /// `delete` also drops the pairs referencing each purged word.
-    private func purgeUnlearnableWords() {
-        var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, "SELECT word FROM user_word", -1, &stmt, nil) == SQLITE_OK else { return }
-        var stale: [String] = []
-        while sqlite3_step(stmt) == SQLITE_ROW {
-            if let c = sqlite3_column_text(stmt, 0) {
-                let word = String(cString: c)
-                if !isLearnable(word) { stale.append(word) }
-            }
-        }
-        sqlite3_finalize(stmt)
-        for word in stale { delete(word) }
-    }
 
     /// Deletes the lowest-ranked rows once the hard caps are exceeded.
     private func prune() {
@@ -365,7 +281,7 @@ final class LearnedWords {
     /// that have followed `previous` before are boosted by the pair counter
     /// (Stage 3 — candidates stay the same, bigrams only affect ranking).
     func suggestions(for prefix: String, previous: String?, limit: Int = 3) -> [String] {
-        let p = prefix.lowercased()
+        let p = Normalization.canonical(prefix)
         guard !p.isEmpty else { return [] }
         var stmt: OpaquePointer?
         let sql = """
@@ -389,7 +305,7 @@ final class LearnedWords {
         sqlite3_bind_int(stmt, 2, Int32(minVisibleUses))
         sqlite3_bind_int64(stmt, 3, Int64((Date().timeIntervalSince1970 - Self.recencyWindow)))
         sqlite3_bind_int(stmt, 4, Int32(limit))
-        sqlite3_bind_text(stmt, 5, previous?.lowercased() ?? "", -1, SQLITE_TRANSIENT)
+        sqlite3_bind_text(stmt, 5, previous.map(Normalization.canonical) ?? "", -1, SQLITE_TRANSIENT)
         var results: [String] = []
         while sqlite3_step(stmt) == SQLITE_ROW {
             if let c = sqlite3_column_text(stmt, 0) { results.append(String(cString: c)) }
@@ -403,6 +319,7 @@ final class LearnedWords {
     /// the bar's «unknown word» marker, so a below-threshold word keeps
     /// counting as unknown until it would actually surface as a suggestion.
     func isRecognized(_ word: String) -> Bool {
+        let canonical = Normalization.canonical(word)
         var stmt: OpaquePointer?
         let sql = """
             SELECT 1 FROM user_word
@@ -411,7 +328,7 @@ final class LearnedWords {
             """
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return false }
         defer { sqlite3_finalize(stmt) }
-        sqlite3_bind_text(stmt, 1, word.lowercased(), -1, SQLITE_TRANSIENT)
+        sqlite3_bind_text(stmt, 1, canonical, -1, SQLITE_TRANSIENT)
         sqlite3_bind_int(stmt, 2, Int32(minVisibleUses))
         return sqlite3_step(stmt) == SQLITE_ROW
     }
@@ -493,6 +410,7 @@ final class LearnedWords {
     /// Stage 5: wipes everything learned — words, pairs, and the event
     /// counter. The bundled dictionary is untouched.
     func reset() {
+        guard !isReadOnly else { return }
         exec("DELETE FROM user_word")
         exec("DELETE FROM user_bigram")
         exec("UPDATE meta SET value = 0 WHERE key = 'total_events'")
@@ -502,7 +420,8 @@ final class LearnedWords {
     /// Removes a single learned word and every pair that references it
     /// (the bundled dictionary is untouched).
     func delete(_ word: String) {
-        let w = word.lowercased()
+        guard !isReadOnly else { return }
+        let w = Normalization.canonical(word)
         for sql in ["DELETE FROM user_word WHERE word = ?1",
                     "DELETE FROM user_bigram WHERE word = ?1 OR prev = ?1"] {
             var stmt: OpaquePointer?

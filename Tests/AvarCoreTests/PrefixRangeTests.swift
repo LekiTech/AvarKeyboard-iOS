@@ -152,7 +152,10 @@ final class PrefixRangeTests: XCTestCase {
     func testUppercaseAndLookalikePrefixesReachTheSameRows() throws {
         let reader = try XCTUnwrap(
             WordSuggestions(databaseURL: dir.appendingPathComponent("words.sqlite")))
-        for prefix in ["КӀВ", "кIв", "к1в", "  кӏв "] {
+        // «к1в» is deliberately absent: digits are not palochka lookalikes,
+        // because this keyboard types real digits (see
+        // NormalizationTests.testDigitsAreNeverRepairedIntoPalochka).
+        for prefix in ["КӀВ", "кIв", "кlв", "  кӏв "] {
             XCTAssertEqual(reader.suggestions(for: prefix).sorted(), ["кӏв", "кӏвал", "кӏвалах"],
                            "\(prefix) should canonicalize to кӏв")
         }
