@@ -27,3 +27,4 @@ fastlane/test_output
 
 # SwiftPM test package (sources live in the app target; only the manifest is ours)
 .build/
+__pycache__/
