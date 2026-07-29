@@ -252,6 +252,26 @@ final class MigrationTests: XCTestCase {
         XCTAssertEqual(rawInt("SELECT count FROM user_word WHERE word='кӏарах'"), 3)
     }
 
+    func testCollisionMergeSaturatesRatherThanOverflows() throws {
+        // Both rows near Int64.max: the sum overflows 64-bit integers, which
+        // SQLite handles by falling back to REAL — and the merge's MIN with
+        // the ceiling brings the result straight back into range instead of
+        // storing a float or trapping.
+        let huge = 9_223_372_036_854_775_000
+        let now = Int64(Date().timeIntervalSince1970)
+        try makeLegacyDatabase(
+            words: [("чіукі", huge, huge, now), ("чӏукӏ", huge, huge, now)],
+            bigrams: [("чіукі", "чӏукӏ", huge, now), ("чӏукӏ", "чӏукӏ", huge, now)],
+            markers: ["filters_version": 1, "palochka_fixed": 1])
+
+        let store = try open()
+
+        XCTAssertEqual(store.migrationOutcome, .ready)
+        XCTAssertEqual(rawInt("SELECT count FROM user_word WHERE word='чӏукӏ'"), 1_000_000_000)
+        XCTAssertEqual(rawInt("SELECT picked FROM user_word WHERE word='чӏукӏ'"), 1_000_000_000)
+        XCTAssertEqual(rawInt("SELECT count FROM user_bigram WHERE prev='чӏукӏ'"), 1_000_000_000)
+    }
+
     // MARK: - A database from the future
 
     func testDatabaseFromTheFutureIsNeverWritten() throws {

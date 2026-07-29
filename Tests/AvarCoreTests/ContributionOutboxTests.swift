@@ -503,6 +503,176 @@ final class ContributionOutboxTests: XCTestCase {
         XCTAssertEqual(reopened.contributionBatch(try XCTUnwrap(reopened.claimBatch()))[0].typed, 4)
     }
 
+    // MARK: - Counter saturation
+
+    private func rawOutboxInt(_ sql: String) -> Int {
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(dir.appendingPathComponent("learned.sqlite").path, &db), SQLITE_OK)
+        defer { sqlite3_close(db) }
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return -1 }
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_step(stmt) == SQLITE_ROW else { return -1 }
+        return Int(sqlite3_column_int64(stmt, 0))
+    }
+
+    private func rawOutboxExec(_ sql: String) {
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(dir.appendingPathComponent("learned.sqlite").path, &db), SQLITE_OK)
+        defer { sqlite3_close(db) }
+        XCTAssertEqual(sqlite3_exec(db, sql, nil, nil, nil), SQLITE_OK)
+    }
+
+    private let ceiling = 1_000_000_000
+
+    func testAHugeDeltaIsClampedOnTheFirstInsert() throws {
+        // The ON CONFLICT arm has always saturated; the first INSERT is the
+        // arm that would have taken Int.max raw.
+        let store = try makeStore()
+        store.enqueueContribution(kind: .wordDelta, key: "кӏвал", typedDelta: Int.max)
+        XCTAssertEqual(rawOutboxInt("SELECT typed_delta FROM outbox"), ceiling)
+    }
+
+    func testAccumulationSaturatesAtTheCeiling() throws {
+        let store = try makeStore()
+        store.enqueueContribution(kind: .wordDelta, key: "кӏвал", typedDelta: Int.max)
+        store.enqueueContribution(kind: .wordDelta, key: "кӏвал",
+                                  typedDelta: Int.max, pickedDelta: Int.max)
+        XCTAssertEqual(rawOutboxInt("SELECT typed_delta FROM outbox"), ceiling)
+        XCTAssertEqual(rawOutboxInt("SELECT picked_delta FROM outbox"), ceiling)
+    }
+
+    func testNegativeDeltasClampToZero() throws {
+        // Counters are monotonic; a negative delta is an upstream bug and
+        // must not become a decrement.
+        let store = try makeStore()
+        store.enqueueContribution(kind: .wordDelta, key: "кӏвал", typedDelta: 5)
+        store.enqueueContribution(kind: .wordDelta, key: "кӏвал", typedDelta: -100, pickedDelta: -1)
+        XCTAssertEqual(rawOutboxInt("SELECT typed_delta FROM outbox"), 5)
+        XCTAssertEqual(rawOutboxInt("SELECT picked_delta FROM outbox"), 0)
+    }
+
+    func testAMalformedStoredValueCannotOverflow() throws {
+        // A corrupted or hostile database with a counter at Int64.max:
+        // SQLite falls back to REAL arithmetic on integer overflow, and the
+        // MIN with the ceiling brings the value straight back into range.
+        let store = try makeStore()
+        store.enqueueContribution(kind: .wordDelta, key: "кӏвал", typedDelta: 1)
+        rawOutboxExec("UPDATE outbox SET typed_delta = 9223372036854775807, confirmations = 9223372036854775807")
+
+        store.enqueueContribution(kind: .wordDelta, key: "кӏвал", typedDelta: 1)
+
+        XCTAssertEqual(rawOutboxInt("SELECT typed_delta FROM outbox"), ceiling)
+        XCTAssertEqual(rawOutboxInt("SELECT confirmations FROM outbox"), ceiling)
+        let rows = store.contributionBatch(try XCTUnwrap(store.claimBatch()))
+        XCTAssertEqual(rows[0].typed, ceiling, "…and the Swift read side survives it too")
+    }
+
+    // MARK: - Event semantics (the pure mapping)
+
+    func testManuallyTypedKnownWordIsTypedOnly() {
+        let events = Contribution.commitEvents(word: "кӏвал", previous: nil, picked: false,
+                                               wordIsInDictionary: true, previousIsInDictionary: false)
+        XCTAssertEqual(events, [CommitEvent(kind: .wordDelta, key: "кӏвал",
+                                            typedDelta: 1, pickedDelta: 0)])
+    }
+
+    func testPickedKnownWordIsPickedOnlyNeverAlsoTyped() {
+        // typed and picked partition the commits, so typed+picked is the
+        // total commit count. Double-counting a pick as a typing would
+        // poison every future acceptance-rate calculation.
+        let events = Contribution.commitEvents(word: "кӏвал", previous: nil, picked: true,
+                                               wordIsInDictionary: true, previousIsInDictionary: false)
+        XCTAssertEqual(events, [CommitEvent(kind: .wordDelta, key: "кӏвал",
+                                            typedDelta: 0, pickedDelta: 1)])
+    }
+
+    func testUnknownWordIsACandidateNotAWordDelta() {
+        let typed = Contribution.commitEvents(word: "гьуьлуьхъ", previous: nil, picked: false,
+                                              wordIsInDictionary: false, previousIsInDictionary: false)
+        XCTAssertEqual(typed, [CommitEvent(kind: .candidate, key: "гьуьлуьхъ",
+                                           typedDelta: 1, pickedDelta: 0)])
+
+        let picked = Contribution.commitEvents(word: "гьуьлуьхъ", previous: nil, picked: true,
+                                               wordIsInDictionary: false, previousIsInDictionary: false)
+        XCTAssertEqual(picked, [CommitEvent(kind: .candidate, key: "гьуьлуьхъ",
+                                            typedDelta: 0, pickedDelta: 1)])
+    }
+
+    func testEachCandidateCommitIsOneConfirmation() throws {
+        // The confirmation counter lives in the queue, incremented once per
+        // enqueue — so one commit is one confirmation, however it happened.
+        let store = try makeStore()
+        for event in Contribution.commitEvents(word: "гьуьлуьхъ", previous: nil, picked: false,
+                                               wordIsInDictionary: false, previousIsInDictionary: false) {
+            store.enqueueContribution(kind: event.kind, key: event.key,
+                                      typedDelta: event.typedDelta, pickedDelta: event.pickedDelta)
+        }
+        XCTAssertEqual(rawOutboxInt("SELECT confirmations FROM outbox"), 1)
+    }
+
+    func testBigramFiresOnlyWhenBothSidesAreDictionaryWords() {
+        // A pair of names identifies more than either name alone, so
+        // unknown words never enter pair context — from either side.
+        let unknownWord = Contribution.commitEvents(word: "гьуьлуьхъ", previous: "зи", picked: false,
+                                                    wordIsInDictionary: false, previousIsInDictionary: true)
+        XCTAssertEqual(unknownWord.map(\.kind), [.candidate])
+
+        let unknownPrevious = Contribution.commitEvents(word: "кӏвал", previous: "гьуьлуьхъ", picked: false,
+                                                        wordIsInDictionary: true, previousIsInDictionary: false)
+        XCTAssertEqual(unknownPrevious.map(\.kind), [.wordDelta])
+    }
+
+    func testBigramDeltaIsAlwaysTypedOne() {
+        // The bigram records that the pair occurred; how the second word
+        // was entered is the word event's business.
+        for picked in [false, true] {
+            let events = Contribution.commitEvents(word: "хайи", previous: "зи", picked: picked,
+                                                   wordIsInDictionary: true, previousIsInDictionary: true)
+            XCTAssertEqual(events.count, 2)
+            XCTAssertEqual(events[1], CommitEvent(kind: .bigramDelta,
+                                                  key: Contribution.bigramKey(previous: "зи", word: "хайи"),
+                                                  typedDelta: 1, pickedDelta: 0))
+        }
+    }
+
+    func testInvalidWordProducesNoEventsAtAll() {
+        for word in ["гаф1", "а", "КӀВАЛ", "iphone"] {
+            let events = Contribution.commitEvents(word: word, previous: "зи", picked: false,
+                                                   wordIsInDictionary: true, previousIsInDictionary: true)
+            XCTAssertEqual(events, [], "\(word) must contribute nothing, not even the bigram")
+        }
+    }
+
+    func testInvalidPreviousDropsOnlyTheBigram() {
+        let events = Contribution.commitEvents(word: "кӏвал", previous: "гаф1", picked: false,
+                                               wordIsInDictionary: true, previousIsInDictionary: true)
+        XCTAssertEqual(events, [CommitEvent(kind: .wordDelta, key: "кӏвал",
+                                            typedDelta: 1, pickedDelta: 0)])
+    }
+
+    func testDeletingALearnedWordTouchesNoCounters() throws {
+        // Events fire at commit, once. Correcting or deleting the word
+        // afterwards produces nothing: a decrement would need exactly the
+        // keystroke-level observation this design refuses to make.
+        let store = try makeStore()
+        store.learn("кӏвал", previous: nil, picked: false)
+        store.enqueueContribution(kind: .wordDelta, key: "кӏвал", typedDelta: 1)
+
+        store.delete("кӏвал")
+
+        XCTAssertEqual(rawOutboxInt("SELECT typed_delta FROM outbox"), 1,
+                       "delete() unlearns the word; it does not rewrite history")
+    }
+
+    func testRecordCommitIsGated() throws {
+        let store = try makeStore()
+        store.setContributionConsent(true)   // consent alone; the flag stays off
+        store.recordCommit(word: "кӏвал", previous: "зи", picked: false,
+                           wordIsInDictionary: true, previousIsInDictionary: true)
+        XCTAssertEqual(store.pendingContributionCount, 0)
+    }
+
     // MARK: - Existing behavior is untouched
 
     func testLearningStillWorksWithTheOutboxPresent() throws {

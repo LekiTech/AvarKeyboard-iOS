@@ -86,6 +86,52 @@ typings of `кӏвал` are one row with `typed = 100`. Typing rhythm, sentence
 length, and message boundaries are not merely unrecorded — they are
 unrepresentable.
 
+**Key validity is enforced at the door.** A word key must be a single
+canonical, valid token; a bigram key must survive `decodeBigramKey`, the
+exact inverse of the encoder — exactly two halves, each canonical and
+valid. Since `Normalization.isValidToken` rejects every control (Cc) and
+format (Cf) character, no valid token can carry the U+001F separator, which
+makes the encoding injective: the separator's position in a well-formed key
+is unique, and two different pairs can never encode to the same string.
+Non-canonical keys are refused rather than repaired — by the time a word
+reaches contribution recording it has already passed the canonical write
+path, so a non-canonical key is an upstream bug that repair would mask.
+
+**All counters saturate.** Deltas are clamped to `[0, 10⁹]` in Swift before
+they reach SQL (the first INSERT takes values raw, so it needs its own
+bound), and every accumulation arm is `MIN(x + delta, 10⁹)`. A malformed
+database with a counter at `Int64.max` cannot overflow either: SQLite falls
+back to REAL arithmetic on integer overflow, and the MIN brings the value
+straight back into range. The same ceiling guards the migration's collision
+merges.
+
+## 4a. Event semantics
+
+`Contribution.commitEvents` is the executable definition; this table is its
+prose twin. Future `base_score` work will consume these counters, so none
+of this is implicit.
+
+| The user… | Events |
+|---|---|
+| manually commits a dictionary word | `word_delta(typed+1)` |
+| accepts a dictionary word from the bar | `word_delta(picked+1)` — **not** also typed |
+| manually commits an unknown word | `candidate(typed+1)`, one confirmation |
+| accepts an unknown (learned) word from the bar | `candidate(picked+1)`, one confirmation |
+| commits a word right after another **dictionary** word | additionally `bigram_delta(typed+1)` |
+| commits after an **unknown** word, or an unknown word after anything | word event only — unknown words never enter pair context; a pair of names identifies more than either name alone |
+| commits an invalid or non-canonical token | nothing, not even the bigram |
+| corrects or deletes a committed word | nothing — counters are monotonic; a decrement would need exactly the keystroke-level observation this design refuses to make |
+
+`typed` and `picked` partition the commits, so `typed + picked` is the
+total commit count and `picked / (typed + picked)` is an acceptance rate. A
+bigram's delta is always `typed = 1`: it records that the pair occurred;
+how the second word was entered is the word event's business.
+
+Events fire once per commit, at the same moment `learn()` fires, with the
+same token and the same `previous`. The wiring call is
+`recordCommit(word:previous:picked:wordIsInDictionary:previousIsInDictionary:)`,
+already written and gated; the typing path does not call it yet.
+
 ## 5. The gate
 
 Collection requires **all three**, checked together in
@@ -169,7 +215,16 @@ The crash case — killed between claim and acknowledgement — is covered end
 to end by `testAClaimThatNeverCompletedIsRecoveredOnTheNextLaunch`: nothing
 lost, nothing counted twice.
 
-## 9. Not in this phase
+## 9. Timestamps are local
+
+`first_seen` and `updated_at` exist for retention and pruning, nothing
+else. **The future export payload contract must not automatically include
+them or any other exact event timestamp** — when a word was typed is
+tracking-adjacent information the aggregation deliberately avoids, and
+whether any time signal at all (say, a coarse batch age) is worth its cost
+is a decision that belongs to the export/privacy phase, not here.
+
+## 10. Not in this phase
 
 No exporter, no serialization format, no App Group write, no
 `RequestsOpenAccess` change, no networking, no `BGTaskScheduler`, no consent

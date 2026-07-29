@@ -114,6 +114,59 @@ enum Contribution {
             return decodeBigramKey(key) != nil
         }
     }
+
+    // MARK: - Event semantics
+
+    /// What one committed word contributes. This is THE definition of the
+    /// analytics semantics — docs/CONTRIBUTION_OUTBOX.md §"Event semantics"
+    /// is its prose twin, and future base_score work builds on it, so none
+    /// of it is allowed to be implicit:
+    ///
+    /// * Events fire once per commit, at the same moment `learn()` fires,
+    ///   with the same token and the same `previous`. Correcting or
+    ///   deleting the word afterwards produces nothing: the counters are
+    ///   monotonic, and a decrement would need exactly the keystroke-level
+    ///   observation this design refuses to make.
+    /// * `typed` and `picked` partition the commits: a manual commit is
+    ///   typed=1, accepting a suggestion is picked=1 and NOT also typed.
+    ///   The sum typed+picked is therefore the total commit count.
+    /// * A word absent from the bundled dictionary contributes a
+    ///   `candidate` event instead of a `word_delta`; each commit is one
+    ///   confirmation (the queue counts them on insert).
+    /// * A bigram event fires only when there is a previous word and BOTH
+    ///   sides are bundled-dictionary words. Unknown words never enter
+    ///   pair context — a pair of names is more identifying than either
+    ///   name alone. The bigram's delta is always typed=1: it records that
+    ///   the pair occurred; how the second word was entered is the word
+    ///   event's business.
+    /// * An invalid or non-canonical word produces no events at all, not
+    ///   even the bigram. An invalid `previous` drops only the bigram.
+    static func commitEvents(word: String, previous: String?, picked: Bool,
+                             wordIsInDictionary: Bool,
+                             previousIsInDictionary: Bool) -> [CommitEvent] {
+        guard Normalization.isCanonical(word), Normalization.isValidToken(word) else { return [] }
+        var events = [CommitEvent(kind: wordIsInDictionary ? .wordDelta : .candidate,
+                                  key: word,
+                                  typedDelta: picked ? 0 : 1,
+                                  pickedDelta: picked ? 1 : 0)]
+        if let previous, wordIsInDictionary, previousIsInDictionary,
+           Normalization.isCanonical(previous), Normalization.isValidToken(previous) {
+            events.append(CommitEvent(kind: .bigramDelta,
+                                      key: bigramKey(previous: previous, word: word),
+                                      typedDelta: 1, pickedDelta: 0))
+        }
+        return events
+    }
+}
+
+/// One outbox increment produced by a commit. A value, not a row: the
+/// mapping from commits to events is a pure function so the semantics can
+/// be tested without a database.
+struct CommitEvent: Equatable {
+    let kind: ContributionKind
+    let key: String
+    let typedDelta: Int
+    let pickedDelta: Int
 }
 
 extension LearnedWords {
@@ -140,6 +193,23 @@ extension LearnedWords {
                             pickedDelta: pickedDelta, now: now)
     }
 
+    /// Records everything one committed word contributes, per the semantics
+    /// defined by `Contribution.commitEvents`. This is the call the typing
+    /// path will make — from the same place `learn()` is called, with the
+    /// same arguments — once the gate can ever open. Fully inert until then.
+    func recordCommit(word: String, previous: String?, picked: Bool,
+                      wordIsInDictionary: Bool, previousIsInDictionary: Bool,
+                      now: Date = Date()) {
+        guard isContributionActive else { return }
+        for event in Contribution.commitEvents(word: word, previous: previous, picked: picked,
+                                               wordIsInDictionary: wordIsInDictionary,
+                                               previousIsInDictionary: previousIsInDictionary) {
+            enqueueContribution(kind: event.kind, key: event.key,
+                                typedDelta: event.typedDelta,
+                                pickedDelta: event.pickedDelta, now: now)
+        }
+    }
+
     /// The ungated primitive, so tests can exercise queue mechanics while
     /// the flag stays a genuine `let false`. Not for production callers:
     /// everything that records real typing goes through
@@ -150,6 +220,14 @@ extension LearnedWords {
                              pickedDelta: Int = 0,
                              now: Date = Date()) {
         guard !isReadOnly, Contribution.isAcceptableKey(key, for: kind) else { return }
+        // Saturating on both sides of the upsert. The Swift clamp bounds
+        // what a caller can insert (the first INSERT takes the value raw,
+        // so it needs its own bound); the SQL MIN bounds what accumulation
+        // can reach. A malformed stored value near Int64.max cannot
+        // overflow either: SQLite falls back to REAL arithmetic on integer
+        // overflow, and MIN with the ceiling brings it straight back down.
+        let typed = min(max(typedDelta, 0), Self.counterCeiling)
+        let picked = min(max(pickedDelta, 0), Self.counterCeiling)
         let timestamp = Int64(now.timeIntervalSince1970)
         // Aggregation in place. A row already claimed by a batch is left
         // untouched and a fresh unclaimed row starts beside it, so an
@@ -157,10 +235,10 @@ extension LearnedWords {
         SQL.run(db, """
             INSERT INTO outbox(kind, key, typed_delta, picked_delta, confirmations,
                                first_seen, updated_at, batch_id)
-            VALUES(?1, ?2, \(typedDelta), \(pickedDelta), 1, \(timestamp), \(timestamp), ?3)
+            VALUES(?1, ?2, \(typed), \(picked), 1, \(timestamp), \(timestamp), ?3)
             ON CONFLICT(kind, key, batch_id) DO UPDATE SET
-                typed_delta = MIN(typed_delta + \(typedDelta), \(Self.counterCeiling)),
-                picked_delta = MIN(picked_delta + \(pickedDelta), \(Self.counterCeiling)),
+                typed_delta = MIN(typed_delta + \(typed), \(Self.counterCeiling)),
+                picked_delta = MIN(picked_delta + \(picked), \(Self.counterCeiling)),
                 confirmations = MIN(confirmations + 1, \(Self.counterCeiling)),
                 updated_at = \(timestamp)
             """, kind.rawValue, key, Contribution.unclaimed)
