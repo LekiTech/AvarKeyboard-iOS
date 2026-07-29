@@ -88,11 +88,13 @@ final class FutureSchemaReadOnlyTests: XCTestCase {
         store.learn("цӏийи", previous: nil, picked: true)
         store.delete("хайи")
         store.reset()
+        store.bumpMetric(.opportunities)
         store.enqueueContribution(kind: .wordDelta, key: "хайи", typedDelta: 1)
         store.setContributionConsent(true)
         _ = store.claimBatch()
         store.acknowledgeContributionBatch("any")
         store.releaseStaleContributionClaims()
+        store.releaseContributionClaim("any")
 
         return (outcome, readOnly, suggestions)
     }
@@ -151,16 +153,28 @@ final class FutureSchemaReadOnlyTests: XCTestCase {
         // When the sidecars ARE present (the persist-WAL default), the -wal
         // must gain no frames. The -shm is deliberately not asserted on: it
         // is coordination state readers may touch, and it holds no user data.
+        //
+        // The comparison happens WHILE the store is still open: a close
+        // could checkpoint-and-truncate the WAL, so comparing after close
+        // would show empty == empty even if frames had been written.
         try makeFutureDatabase(journalMode: "WAL")
         guard FileManager.default.fileExists(atPath: path + "-wal") else {
             throw XCTSkip("This SQLite build does not persist the WAL across a close")
         }
         let before = try Data(contentsOf: URL(fileURLWithPath: path + "-wal"))
 
-        _ = try useStoreEveryWay()
+        let store = try XCTUnwrap(LearnedWords(directory: dir))
+        XCTAssertTrue(store.isReadOnly)
+        store.learn("цӏийи", previous: "зи", picked: false)
+        store.delete("хайи")
+        store.reset()
+        store.bumpMetric(.opportunities)
+        store.setContributionConsent(true)
+        store.enqueueContribution(kind: .wordDelta, key: "хайи", typedDelta: 1)
 
         let after = try Data(contentsOf: URL(fileURLWithPath: path + "-wal"))
         XCTAssertEqual(after, before, "No transaction may have written a WAL frame")
+        withExtendedLifetime(store) {}
     }
 
     func testTheFutureTablesAreStillThere() throws {

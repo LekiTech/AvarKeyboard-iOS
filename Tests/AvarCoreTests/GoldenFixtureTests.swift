@@ -73,11 +73,17 @@ final class GoldenFixtureTests: XCTestCase {
     }
 
     /// The database's complete logical content, for idempotence comparison.
+    /// Full rows everywhere — a count would hide a rerun that rewrote
+    /// content while keeping cardinality.
     private func logicalDump() -> [[String]] {
         rawRows("SELECT 'w', word, count, picked, last_used FROM user_word ORDER BY word")
         + rawRows("SELECT 'b', prev, word, count, last_used FROM user_bigram ORDER BY prev, word")
         + rawRows("SELECT 'm', key, value FROM meta ORDER BY key")
-        + rawRows("SELECT 'o', COUNT(*) FROM outbox")
+        + rawRows("""
+            SELECT 'o', kind, key, typed_delta, picked_delta, confirmations,
+                   first_seen, updated_at, batch_id
+            FROM outbox ORDER BY kind, key, batch_id
+            """)
     }
 
     // MARK: - The fixture itself

@@ -91,15 +91,28 @@ so a word is the same word in all six places.
 6. **NFC again**, which makes the function idempotent by construction:
    `canonical(canonical(x)) == canonical(x)`.
 
-**Validity of a token** (canonical form assumed): non-empty; ≤64
-characters; no internal whitespace; no digits; none of `@ / .`; no Latin
-letters left after repair; no control (Cc) or format (Cf) characters —
-controls include U+001F, the contribution outbox's bigram-key separator,
-and formats are the invisibles (ZWJ, bidi marks) that would let two
-identical-looking tokens be distinct rows; at least two Lezgi letters,
+**Validity of a token** (canonical form assumed): non-empty; ≤64 code
+points (Swift counts unicode scalars, Python counts code points — the same
+number, deliberately, where grapheme counting would quietly diverge on
+combining marks); no internal whitespace; no digits; none of `@ / .`; no
+Latin letters left after repair; no control (Cc) or format (Cf)
+characters — controls include U+001F, the contribution outbox's bigram-key
+separator, and formats are the invisibles (ZWJ, bidi marks) that would let
+two identical-looking tokens be distinct rows; at least two Lezgi letters,
 where a digraph tail (`ӏ`, `ь`, `ъ`) extends the previous letter rather
 than counting as its own, so a lone `цӏ` is one letter and therefore
 invalid.
+
+Two footnotes on the Cc/Cf rule. First, trimming: Swift's
+`whitespacesAndNewlines` does NOT treat the C0 separators U+001C–U+001F as
+whitespace, and Python's bare `str.strip()` does — so the Python half trims
+with an explicit Swift-equivalent set (`trim_like_swift`), and a token that
+merely *borders* on U+001F stays intact for the validity check to reject.
+Second, category assignments come from each platform's Unicode data, which
+can differ by a Unicode version; for the characters that matter here (C0
+controls, ZWJ/ZWNJ, bidi marks) the categories have been stable for
+decades, and any hypothetical drift would surface as a `--check` failure
+when artifacts are rebuilt, not as silent runtime disagreement.
 
 ### What this found in the shipped dictionary
 

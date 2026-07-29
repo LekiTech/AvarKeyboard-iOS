@@ -56,10 +56,10 @@ final class NormalizationTests: XCTestCase {
         XCTAssertEqual(Normalization.canonical("чіукі"), "чӏукӏ")
     }
 
-    func testLatinIAndDigitOneBecomePalochkaInCyrillicTokens() {
+    func testLatinCapitalIAndLowercaseLBecomePalochkaInCyrillicTokens() {
         XCTAssertEqual(Normalization.canonical("кIвал"), "кӏвал")
         XCTAssertEqual(Normalization.canonical("кlвал"), "кӏвал")
-        // The digit is NOT a lookalike — see testDigitsAreNeverRepaired…
+        // The digit 1 is NOT a lookalike — see testDigitsAreNeverRepaired…
     }
 
     func testLatinOnlyTokensAreLeftAlone() {

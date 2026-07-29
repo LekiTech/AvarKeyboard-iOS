@@ -87,7 +87,11 @@ def normalize(token: str) -> str:
     # 1. Unicode NFC, so a decomposed «й» (и + breve) equals the precomposed one.
     token = unicodedata.normalize("NFC", token)
     # 2. Trim; internal whitespace makes a token invalid, not repairable.
-    token = token.strip()
+    #    NOT str.strip(): Python counts U+001C-U+001F (FS/GS/RS/US) as
+    #    whitespace and Swift's whitespacesAndNewlines does not, and U+001F
+    #    is the contribution bigram-key separator -- the halves of the
+    #    contract must agree exactly on what disappears at the boundary.
+    token = trim_like_swift(token)
     # 3. Case-fold to lowercase; this also maps Ӏ (U+04C0) to ӏ (U+04CF).
     token = token.lower()
     # 4. Repair palochka lookalikes, but only inside Cyrillic tokens — a
@@ -99,6 +103,19 @@ def normalize(token: str) -> str:
     # NFC again: step 3-5 can only produce precomposed characters, but the
     # second pass makes the function idempotent by construction.
     return unicodedata.normalize("NFC", token)
+
+
+# What Swift's CharacterSet.whitespacesAndNewlines strips: Unicode space
+# separators (Zs), line/paragraph separators (Zl/Zp), and the ASCII/Latin-1
+# controls it blesses -- NOT the C0 information separators U+001C-U+001F.
+_SWIFT_WHITESPACE = "\t\n\x0b\x0c\r\x85" + "".join(
+    chr(cp) for cp in range(0x110000)
+    if unicodedata.category(chr(cp)) in ("Zs", "Zl", "Zp")
+)
+
+
+def trim_like_swift(token: str) -> str:
+    return token.strip(_SWIFT_WHITESPACE)
 
 
 def lezgi_letter_count(token: str) -> int:

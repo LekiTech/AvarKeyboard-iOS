@@ -90,6 +90,19 @@ final class LearnedWords {
             sqlite3_close(db)
             return nil
         }
+        // Second chance for the future check: the peek cannot read a hot
+        // WAL whose recovery needs write access, so it falls through to
+        // here. Recovery has happened by now (SQLite's own, content-safe);
+        // asking again BEFORE the pragma and the schema block keeps every
+        // write of OURS away from a database a newer build owns. On this
+        // corner path the handle stays read-write, so the isReadOnly
+        // guards on every mutation API are the enforcement.
+        let found = SQL.int(db, "SELECT value FROM meta WHERE key = 'schema_version'")
+        if found > Migrations.targetSchemaVersion {
+            migrationOutcome = .databaseFromFuture(found: found,
+                                                   supported: Migrations.targetSchemaVersion)
+            return
+        }
         exec("PRAGMA journal_mode=WAL")
         exec("""
             CREATE TABLE IF NOT EXISTS meta(
@@ -425,10 +438,16 @@ final class LearnedWords {
     }
 
     func bumpMetric(_ metric: Metric) {
+        // The one write that used to skip the isReadOnly guard. On the
+        // normal future-schema path the read-only handle would refuse it
+        // anyway; on the hot-WAL fallback path (read-write handle, logical
+        // refusal only) it would have stamped a metric into a database a
+        // newer build owns.
+        guard !isReadOnly else { return }
         var stmt: OpaquePointer?
         let sql = """
             INSERT INTO meta(key, value) VALUES(?1, 1)
-            ON CONFLICT(key) DO UPDATE SET value = value + 1
+            ON CONFLICT(key) DO UPDATE SET value = MIN(value + 1, 1000000000)
             """
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
         defer { sqlite3_finalize(stmt) }

@@ -363,18 +363,61 @@ extension LearnedWords {
         SQL.run(db, "DELETE FROM outbox WHERE batch_id = ?1", batchID)
     }
 
-    /// Returns rows from batches that were claimed but never acknowledged —
-    /// the crash case, and the case where an upload never got an answer.
+    /// Returns one batch's rows to the queue — the recovery move for a
+    /// claim whose export never made it to disk.
     ///
-    /// Counters come back intact, so nothing is lost. The old batch id stops
-    /// existing, so a late acknowledgement of it is a no-op rather than a
-    /// deletion of data that has since been re-queued, and a late *upload*
-    /// of it cannot double-count: the server sees the same batch id it
-    /// already has, or a new id whose rows were never delivered.
+    /// Counters come back intact, so nothing is lost. The old batch id
+    /// stops existing, so a late acknowledgement of it is a no-op rather
+    /// than a deletion of data that has since been re-queued, and a late
+    /// *export* of it cannot double-count: there are no rows left under
+    /// that id to serialize.
+    func releaseContributionClaim(_ batchID: String) {
+        guard !isReadOnly, batchID != Contribution.unclaimed else { return }
+        // Merge, don't rename: typing during the in-flight batch may have
+        // started a fresh unclaimed row for the same (kind, key), and a
+        // plain UPDATE into that identity would violate the unique index —
+        // failing the statement and leaving the rows claimed forever. The
+        // released counters fold into the twin instead, saturating like
+        // every other accumulation.
+        guard SQL.exec(db, "BEGIN IMMEDIATE") else { return }
+        let merged = SQL.run(db, """
+            INSERT INTO outbox(kind, key, typed_delta, picked_delta, confirmations,
+                               first_seen, updated_at, batch_id)
+            SELECT kind, key, typed_delta, picked_delta, confirmations,
+                   first_seen, updated_at, ?1
+            FROM outbox WHERE batch_id = ?2
+            ON CONFLICT(kind, key, batch_id) DO UPDATE SET
+                typed_delta = MIN(typed_delta + excluded.typed_delta, \(Self.counterCeiling)),
+                picked_delta = MIN(picked_delta + excluded.picked_delta, \(Self.counterCeiling)),
+                confirmations = MIN(confirmations + excluded.confirmations, \(Self.counterCeiling)),
+                first_seen = MIN(first_seen, excluded.first_seen),
+                updated_at = MAX(updated_at, excluded.updated_at)
+            """, Contribution.unclaimed, batchID)
+        && SQL.run(db, "DELETE FROM outbox WHERE batch_id = ?1", batchID)
+        if merged {
+            SQL.exec(db, "COMMIT")
+        } else {
+            SQL.exec(db, "ROLLBACK")
+        }
+    }
+
+    /// Every batch id currently holding claimed rows. The bridge compares
+    /// this against the files actually on disk to find claims that died
+    /// between claiming and writing.
+    var claimedContributionBatchIDs: [String] {
+        SQL.strings(db, "SELECT DISTINCT batch_id FROM outbox WHERE batch_id <> '' ORDER BY batch_id")
+    }
+
+    /// Returns ALL claimed rows to the queue. Correct only while nothing
+    /// has been exported anywhere: once a batch has a file on disk,
+    /// releasing its rows would let a second claim duplicate them into a
+    /// second file. The bridge never calls this — it releases per batch,
+    /// and only for batches with no file. Kept for tests and for the
+    /// pre-bridge world where a claim could never outlive the process.
     func releaseStaleContributionClaims() {
-        guard !isReadOnly else { return }
-        SQL.run(db, "UPDATE outbox SET batch_id = ?1 WHERE batch_id <> ?1",
-                Contribution.unclaimed)
+        for batchID in claimedContributionBatchIDs {
+            releaseContributionClaim(batchID)
+        }
     }
 
     /// Rows waiting to be claimed. Diagnostics and tests.

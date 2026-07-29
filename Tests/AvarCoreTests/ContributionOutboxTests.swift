@@ -164,12 +164,18 @@ final class ContributionOutboxTests: XCTestCase {
         XCTAssertEqual(decoded.word, "кӏвал")
     }
 
-    func testTheSeparatorCannotOccurInACanonicalToken() {
-        // If it could, a bigram key would be ambiguous.
-        let separator = Character(Contribution.keySeparator)
-        for token in ["кӏвал", "хайи", "къуьл", "ва", "цӏиргъ"] {
-            XCTAssertFalse(Normalization.canonical(token).contains(separator))
-        }
+    func testASeparatorBearingTokenCanNeverBeAValidKeyHalf() {
+        // canonical() does NOT strip the separator — validation is the
+        // gate. What makes the encoding unambiguous is that no token
+        // carrying the separator can ever pass the validity check that
+        // every key half must pass.
+        let smuggler = "ва\u{1F}кӏ"
+        XCTAssertTrue(Normalization.canonical(smuggler).contains(Character(Contribution.keySeparator)),
+                      "Precondition: canonicalization alone does not remove it")
+        XCTAssertFalse(Normalization.isValidToken(Normalization.canonical(smuggler)))
+        XCTAssertNil(Contribution.decodeBigramKey(
+            Contribution.bigramKey(previous: smuggler, word: "кӏвал")),
+            "A forged half means the whole key decodes to nothing")
     }
 
     // MARK: - Key contract
@@ -331,7 +337,10 @@ final class ContributionOutboxTests: XCTestCase {
         for i in 0..<(Contribution.maxRows + 200) {
             store.enqueueContribution(kind: .wordDelta, key: distinctKey(i), typedDelta: 1)
         }
-        XCTAssertLessThanOrEqual(store.pendingContributionCount, Contribution.maxRows)
+        // Exactly maxRows, not merely ≤: an upper-bound-only assertion
+        // would also pass if every key were refused at the door and the
+        // queue stayed empty.
+        XCTAssertEqual(store.pendingContributionCount, Contribution.maxRows)
     }
 
     func testPruningKeepsTheMostConfirmedRows() throws {
@@ -342,6 +351,8 @@ final class ContributionOutboxTests: XCTestCase {
         for i in 0..<(Contribution.maxRows + 100) {
             store.enqueueContribution(kind: .wordDelta, key: distinctKey(i), typedDelta: 1)
         }
+        XCTAssertEqual(store.pendingContributionCount, Contribution.maxRows,
+                       "Precondition: eviction pressure actually happened")
         let surviving = store.contributionBatch(try XCTUnwrap(store.claimBatch(limit: Contribution.maxRows)))
         XCTAssertTrue(surviving.contains { $0.key == "лезги" },
                       "Pressure must evict the incidental, not the reinforced")
@@ -479,6 +490,26 @@ final class ContributionOutboxTests: XCTestCase {
 
         XCTAssertEqual(store.contributionBatch(reclaimed).count, 1,
                        "A stale acknowledgement must not delete re-queued work")
+    }
+
+    func testReleasingAClaimMergesIntoItsUnclaimedTwin() throws {
+        // The identity crash: typing during an in-flight batch starts a
+        // fresh unclaimed row for the same (kind, key). Releasing the claim
+        // as a plain batch_id rename would collide with that twin on the
+        // unique index, fail, and leave the rows claimed forever. Release
+        // must merge instead.
+        let store = try makeStore()
+        store.enqueueContribution(kind: .wordDelta, key: "кӏвал", typedDelta: 5)
+        let batch = try XCTUnwrap(store.claimBatch())
+        store.enqueueContribution(kind: .wordDelta, key: "кӏвал", typedDelta: 2)
+        XCTAssertEqual(store.pendingContributionCount, 1, "Precondition: the twin exists")
+
+        store.releaseContributionClaim(batch)
+
+        XCTAssertEqual(store.claimedContributionBatchIDs, [], "The claim must actually clear")
+        XCTAssertEqual(store.pendingContributionCount, 1, "One merged row, not two")
+        let rows = store.contributionBatch(try XCTUnwrap(store.claimBatch()))
+        XCTAssertEqual(rows[0].typed, 7, "5 released + 2 new; nothing lost, nothing doubled")
     }
 
     func testReleaseMergesNothingAndLosesNothingAcrossSeveralBatches() throws {

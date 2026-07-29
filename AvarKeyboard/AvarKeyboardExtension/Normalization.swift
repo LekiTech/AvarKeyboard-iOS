@@ -108,7 +108,12 @@ enum Normalization {
     /// own equivalent rules, and unifying them changes what gets learned,
     /// which needs its own migration and review.
     static func isValidToken(_ token: String) -> Bool {
-        guard !token.isEmpty, token.count <= 64 else { return false }
+        // Scalars, not Characters: Python's len() counts code points, and
+        // the two halves of the contract must measure length identically.
+        // On canonical (NFC) Lezgi text the two counts agree anyway; they
+        // diverge only on combining-mark sequences, exactly where an
+        // implicit disagreement would hide.
+        guard !token.isEmpty, token.unicodeScalars.count <= 64 else { return false }
         guard !token.contains(where: \.isWhitespace) else { return false }
         guard !token.contains(where: \.isNumber) else { return false }
         guard !token.contains("@"), !token.contains("/"), !token.contains(".") else { return false }
