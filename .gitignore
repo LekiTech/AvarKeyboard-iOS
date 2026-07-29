@@ -24,3 +24,6 @@ fastlane/test_output
 
 # macOS
 .DS_Store
+
+# SwiftPM test package (sources live in the app target; only the manifest is ours)
+.build/

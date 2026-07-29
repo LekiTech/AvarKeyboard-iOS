@@ -71,8 +71,12 @@ final class LearnedWords {
         word.reduce(0) { digraphTails.contains($1) ? $0 : $0 + 1 }
     }
 
-    init?() {
-        guard let dir = FileManager.default
+    /// Opens the learned store. `directory` defaults to the extension's own
+    /// Application Support container — the production path, unchanged. Tests
+    /// pass a temporary directory to get an isolated database; nothing else
+    /// overrides it.
+    init?(directory: URL? = nil) {
+        guard let dir = directory ?? FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let path = dir.appendingPathComponent("learned.sqlite").path
