@@ -4,42 +4,91 @@
 //
 //  Created by Enver Eskendarov on 6/28/26.
 //
+//  Reader for the bundled, read-only `lezgi_words.sqlite` artifact.
+//  Schema, metadata and the base_score contract: docs/ARTIFACT_CONTRACT.md.
+//
 
 import Foundation
 import SQLite3
 
-/// Prefix lookup in the bundled `lezgi_words.sqlite` dictionary.
-/// The dictionary stores fully lowercase words with the lowercase Cyrillic
-/// palochka `ӏ` (U+04CF). Typed text carries the capital palochka `Ӏ`
-/// (U+04C0) from the layout; every lookup lowercases first, and Unicode
-/// case mapping folds U+04C0 to U+04CF, so queries match byte-for-byte
-/// with no further normalization.
+/// Prefix lookup in the bundled dictionary.
 ///
-/// TODO(Avar): the bundled dictionary is still the inherited Lezgi one.
-/// Replace it with `avar_words.sqlite` (same single-table schema:
-/// `words(word TEXT PRIMARY KEY ASC)`, lowercase, Cyrillic palochka) and update the
-/// resource name below. The class itself is language-agnostic, and the
-/// failable init means the keyboard — including on-device word and bigram
-/// learning — keeps working even with no bundled dictionary at all.
+/// Words are stored in the canonical form (`Normalization`), so a lookup
+/// normalizes its input and then compares bytes — no per-row work, and the
+/// primary-key index can be used.
 final class WordSuggestions {
     private var db: OpaquePointer?
     private var stmt: OpaquePointer?
 
-    init?() {
-        // TODO(Avar): swap "lezgi_words" → "avar_words" once the Avar
-        // dictionary is generated.
-        guard let url = Bundle(for: WordSuggestions.self)
-            .url(forResource: "lezgi_words", withExtension: "sqlite") else { return nil }
-        guard sqlite3_open_v2(url.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else { return nil }
-        let sql = "SELECT word FROM words WHERE word LIKE ? ORDER BY LENGTH(word) LIMIT 3"
+    /// Artifact metadata, read once at open. Nil for a pre-metadata
+    /// artifact (the released 1.2.0 dictionary had none).
+    private(set) var metadata: ArtifactMetadata?
+
+    /// Newest artifact schema this reader understands.
+    static let supportedSchemaVersion = 1
+
+    /// Whether the artifact carries a `base_score` column. False for the
+    /// pre-metadata artifact, in which case ordering falls back to length
+    /// alone — exactly the released behavior.
+    private let hasBaseScore: Bool
+
+    init?(databaseURL: URL? = nil) {
+        let url = databaseURL ?? Bundle(for: WordSuggestions.self)
+            .url(forResource: "lezgi_words", withExtension: "sqlite")
+        guard let url else { return nil }
+        guard sqlite3_open_v2(url.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+            sqlite3_close(db)
+            return nil
+        }
+
+        metadata = ArtifactMetadata.read(from: db, expecting: "lezgi_words")
+        // An artifact from the future is treated as absent: reading the
+        // dictionary wrongly is worse than having no dictionary.
+        if let metadata, metadata.minReaderSchema > Self.supportedSchemaVersion {
+            sqlite3_close(db)
+            return nil
+        }
+
+        hasBaseScore = Self.columnExists("base_score", table: "words", db: db)
+
+        // Explicit range instead of LIKE: SQLite cannot use the index for
+        // `word LIKE 'p%'` on a BINARY-collated column while
+        // case_sensitive_like is off, so the released query scanned all
+        // 20 354 rows on every keystroke. The range is byte-identical for
+        // this data — LIKE is case-insensitive for ASCII only, and this
+        // dictionary is Cyrillic.
+        let ordering = hasBaseScore ? "base_score DESC, LENGTH(word)" : "LENGTH(word)"
+        let sql = """
+            SELECT word FROM words
+            WHERE word >= ?1 AND word < ?2
+            ORDER BY \(ordering) LIMIT 3
+            """
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return nil }
     }
 
+    /// Upper bound of a prefix range: the prefix with the highest scalar
+    /// appended, so every string starting with the prefix sorts below it.
+    private static func upperBound(_ prefix: String) -> String {
+        prefix + "\u{10FFFF}"
+    }
+
+    private static func columnExists(_ column: String, table: String, db: OpaquePointer?) -> Bool {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, "PRAGMA table_info(\(table))", -1, &stmt, nil) == SQLITE_OK
+        else { return false }
+        defer { sqlite3_finalize(stmt) }
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let c = sqlite3_column_text(stmt, 1), String(cString: c) == column { return true }
+        }
+        return false
+    }
+
     func suggestions(for prefix: String) -> [String] {
-        guard !prefix.isEmpty, let stmt else { return [] }
-        let pattern = prefix.lowercased() + "%"
+        let normalized = Normalization.canonical(prefix)
+        guard !normalized.isEmpty, let stmt else { return [] }
         sqlite3_reset(stmt)
-        sqlite3_bind_text(stmt, 1, (pattern as NSString).utf8String, -1, nil)
+        sqlite3_bind_text(stmt, 1, (normalized as NSString).utf8String, -1, nil)
+        sqlite3_bind_text(stmt, 2, (Self.upperBound(normalized) as NSString).utf8String, -1, nil)
         var results: [String] = []
         while sqlite3_step(stmt) == SQLITE_ROW {
             if let c = sqlite3_column_text(stmt, 0) { results.append(String(cString: c)) }
@@ -47,21 +96,20 @@ final class WordSuggestions {
         return results
     }
 
-    /// Exact-word membership — the same normalization rule as
-    /// `suggestions(for:)`: the table stores lowercase words with the
-    /// Cyrillic palochka, so a lowercased comparison is byte-exact.
+    /// Exact-word membership, in the canonical form.
     func contains(_ word: String) -> Bool {
-        guard !word.isEmpty else { return false }
+        let normalized = Normalization.canonical(word)
+        guard !normalized.isEmpty else { return false }
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, "SELECT 1 FROM words WHERE word = ?1 LIMIT 1",
                                  -1, &stmt, nil) == SQLITE_OK else { return false }
         defer { sqlite3_finalize(stmt) }
-        sqlite3_bind_text(stmt, 1, (word.lowercased() as NSString).utf8String, -1, nil)
+        sqlite3_bind_text(stmt, 1, (normalized as NSString).utf8String, -1, nil)
         return sqlite3_step(stmt) == SQLITE_ROW
     }
 
-    /// Random dictionary words for the idle suggestion bar. Queried once per
-    /// keyboard appearance, so the scan over the small dictionary is
+    /// Random dictionary words for the idle suggestion bar. Queried on the
+    /// transition into idle, so the scan over the small dictionary is
     /// imperceptible.
     func randomWords(_ count: Int) -> [String] {
         var stmt: OpaquePointer?
@@ -77,4 +125,41 @@ final class WordSuggestions {
     }
 
     deinit { sqlite3_finalize(stmt); sqlite3_close(db) }
+}
+
+/// Version and provenance of a bundled artifact. See
+/// docs/ARTIFACT_CONTRACT.md §1.
+struct ArtifactMetadata {
+    let artifact: String
+    let schemaVersion: Int
+    let contentVersion: Int
+    let normalizationVersion: Int
+    let minReaderSchema: Int
+    let rowCount: Int
+
+    /// Reads the `meta` table. Returns nil when the table is absent (a
+    /// pre-metadata artifact) or the `artifact` key does not match, which
+    /// also catches loading the wrong file.
+    static func read(from db: OpaquePointer?, expecting kind: String) -> ArtifactMetadata? {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, "SELECT key, value FROM meta", -1, &stmt, nil) == SQLITE_OK
+        else { return nil }
+        defer { sqlite3_finalize(stmt) }
+
+        var values: [String: String] = [:]
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let k = sqlite3_column_text(stmt, 0), let v = sqlite3_column_text(stmt, 1) {
+                values[String(cString: k)] = String(cString: v)
+            }
+        }
+        guard values["artifact"] == kind else { return nil }
+        return ArtifactMetadata(
+            artifact: kind,
+            schemaVersion: Int(values["schema_version"] ?? "") ?? 0,
+            contentVersion: Int(values["content_version"] ?? "") ?? 0,
+            normalizationVersion: Int(values["normalization_version"] ?? "") ?? 0,
+            minReaderSchema: Int(values["min_reader_schema"] ?? "") ?? 0,
+            rowCount: Int(values["row_count"] ?? "") ?? 0
+        )
+    }
 }

@@ -28,6 +28,7 @@ let package = Package(
                 "LearnedWords.swift",
                 "Normalization.swift",
                 "WordSuggestions.swift",
+                "StaticBigrams.swift",
                 "KeyboardSettings.swift",
                 "KeyboardLayout.swift",
             ]
