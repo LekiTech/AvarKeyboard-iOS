@@ -29,6 +29,7 @@ let package = Package(
                 "Migrations.swift",
                 "ContributionOutbox.swift",
                 "ContributionBridge.swift",
+                "ContributionExporter.swift",
                 "Normalization.swift",
                 "WordSuggestions.swift",
                 "StaticBigrams.swift",

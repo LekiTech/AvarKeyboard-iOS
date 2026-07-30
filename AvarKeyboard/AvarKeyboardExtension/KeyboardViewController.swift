@@ -95,6 +95,13 @@ class KeyboardViewController: UIInputViewController {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: work)
     }
 
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        // Inert until the contribution feature flag ever ships enabled;
+        // placed at dismissal so it can never sit on the typing path.
+        model.runContributionBridgeIfEnabled(hasFullAccess: hasFullAccess)
+    }
+
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
         model.needsGlobe = needsInputModeSwitchKey

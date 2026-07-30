@@ -224,12 +224,27 @@ lost, nothing counted twice.
 
 ## 8a. The bridge (proof of concept, directory-injected)
 
-`ContributionBridge.swift` implements the file protocol between the
-keyboard and the containing app. **Every function takes the bridge
-directory as a parameter** — nothing in the file knows about App Groups,
-entitlements, or Full Access, so the entire protocol is tested against
-temporary directories while the production container remains a separately
-approved future change.
+The protocol is split along the target boundary so the two sides cannot
+drift: `ContributionBridge.swift` (format, directory layout, atomic write,
+the app-side inbox) is compiled into BOTH the keyboard extension and the
+containing app; `ContributionExporter.swift` (everything touching
+`learned.sqlite`) is extension-only. **Every function takes the bridge
+directory as a parameter**, so the entire protocol is tested against
+temporary directories.
+
+The production directory is the App Group container
+**`group.org.lekitech.avarkeyboard`** — this keyboard's OWN group. Every
+keyboard in the family gets a dedicated group
+(`group.org.lekitech.avarkeyboard`, …); bridges are never shared across
+keyboards, and future keyboards use `org.lekitech.*` bundle identifiers
+from the start. The released Lezgi bundle identifiers stay exactly as
+shipped, permanently.
+
+Both call sites exist and are inert: the keyboard runs a bridge pass at
+dismissal (`viewWillDisappear` — never the typing path), gated on the
+build flag, consent, a writable store, and Full Access; the app scans for
+batches on foregrounding, which is passive — files exist only if the
+keyboard's gated exporter ever wrote any, and today it cannot.
 
 ```
 outbox ──claim──► Contribution/outgoing/<batch>.json     (keyboard writes)

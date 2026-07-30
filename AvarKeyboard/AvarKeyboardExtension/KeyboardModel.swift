@@ -431,6 +431,17 @@ final class KeyboardModel: ObservableObject {
         updateSuggestions(proxy: proxy)
     }
 
+    /// One pass of the contribution bridge, called when the keyboard is
+    /// dismissed — never on the typing path. Compile-time inert while
+    /// `Contribution.isEnabled` is false, and even once enabled it still
+    /// requires user consent, a writable store, and Full Access before a
+    /// single byte reaches the App Group. See ContributionExporter.swift.
+    func runContributionBridgeIfEnabled(hasFullAccess: Bool) {
+        guard Contribution.isEnabled,
+              let bridge = ContributionBridge.productionDirectory else { return }
+        learned?.runContributionBridge(at: bridge, hasFullAccess: hasFullAccess)
+    }
+
     // MARK: - Settings panel data
 
     /// Saved words for the settings dictionary page: genuinely user-added
