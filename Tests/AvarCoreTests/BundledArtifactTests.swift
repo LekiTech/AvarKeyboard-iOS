@@ -53,7 +53,7 @@ final class BundledArtifactTests: XCTestCase {
             }
         }
         if withMetadata {
-            writeMeta(db, kind: "lezgi_words", rows: words.count, minReaderSchema: minReaderSchema)
+            writeMeta(db, kind: "avar_words", rows: words.count, minReaderSchema: minReaderSchema)
         }
         return url
     }
@@ -74,7 +74,7 @@ final class BundledArtifactTests: XCTestCase {
         for (prev, word, weight) in pairs {
             exec(db, "INSERT INTO bigrams(prev, word, weight) VALUES('\(prev)','\(word)',\(weight))")
         }
-        writeMeta(db, kind: "lezgi_bigrams", rows: pairs.count, minReaderSchema: 1)
+        writeMeta(db, kind: "avar_bigrams", rows: pairs.count, minReaderSchema: 1)
         return url
     }
 
@@ -100,7 +100,7 @@ final class BundledArtifactTests: XCTestCase {
         let url = try makeWordsFixture([("хайи", 0)])
         let reader = try XCTUnwrap(WordSuggestions(databaseURL: url))
         let meta = try XCTUnwrap(reader.metadata)
-        XCTAssertEqual(meta.artifact, "lezgi_words")
+        XCTAssertEqual(meta.artifact, "avar_words")
         XCTAssertEqual(meta.schemaVersion, 1)
         XCTAssertEqual(meta.normalizationVersion, Normalization.version)
         XCTAssertEqual(meta.rowCount, 1)
@@ -201,7 +201,7 @@ final class BundledArtifactTests: XCTestCase {
         let keyboard = repo.appendingPathComponent("AvarKeyboard/AvarKeyboardExtension")
 
         let words = try XCTUnwrap(
-            WordSuggestions(databaseURL: keyboard.appendingPathComponent("lezgi_words.sqlite")))
+            WordSuggestions(databaseURL: keyboard.appendingPathComponent("avar_words.sqlite")))
         let wordsMeta = try XCTUnwrap(words.metadata)
         XCTAssertEqual(wordsMeta.normalizationVersion, Normalization.version,
                        "The shipped dictionary must match the runtime's normalization")
@@ -209,7 +209,7 @@ final class BundledArtifactTests: XCTestCase {
         XCTAssertFalse(words.suggestions(for: "кӏв").isEmpty)
 
         let bigrams = try XCTUnwrap(
-            StaticBigrams(databaseURL: keyboard.appendingPathComponent("lezgi_bigrams.sqlite")))
+            StaticBigrams(databaseURL: keyboard.appendingPathComponent("avar_bigrams.sqlite")))
         XCTAssertTrue(bigrams.isEmpty, "The shipped bigram artifact is intentionally empty")
         XCTAssertEqual(try XCTUnwrap(bigrams.metadata).normalizationVersion, Normalization.version)
     }
@@ -218,7 +218,7 @@ final class BundledArtifactTests: XCTestCase {
         // Every row must already be canonical, or lookups would miss it.
         let repo = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-        let path = repo.appendingPathComponent("AvarKeyboard/AvarKeyboardExtension/lezgi_words.sqlite").path
+        let path = repo.appendingPathComponent("AvarKeyboard/AvarKeyboardExtension/avar_words.sqlite").path
 
         var db: OpaquePointer?
         XCTAssertEqual(sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, nil), SQLITE_OK)

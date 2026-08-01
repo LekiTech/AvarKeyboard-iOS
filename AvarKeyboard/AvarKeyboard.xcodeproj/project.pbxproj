@@ -55,7 +55,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
-				AvarKeyboardExtension.entitlements,
 			);
 			target = E27822D72FF1F2A800255D0E /* AvarKeyboardExtension */;
 		};
@@ -70,7 +69,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
-				AvarKeyboard.entitlements,
 			);
 			target = E27822C52FF1F09E00255D0E /* AvarKeyboard */;
 		};
@@ -95,8 +93,8 @@
 		E27822D92FF1F2A800255D0E /* AvarKeyboardExtension */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				E27822E02FF1F2A800255D0E /* Exceptions for "AvarKeyboardExtension" folder in "AvarKeyboardExtension" target */,
 				E2CB41D9E0000000000000A1 /* Exceptions for "AvarKeyboardExtension" folder in "AvarKeyboard" target */,
+				E27822E02FF1F2A800255D0E /* Exceptions for "AvarKeyboardExtension" folder in "AvarKeyboardExtension" target */,
 			);
 			path = AvarKeyboardExtension;
 			sourceTree = "<group>";
@@ -502,8 +500,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_ENTITLEMENTS = AvarKeyboard/AvarKeyboard.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 13;
 				DEVELOPMENT_TEAM = "";
@@ -542,8 +540,8 @@
 		E27822E22FF1F2A800255D0E /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_ENTITLEMENTS = AvarKeyboardExtension/AvarKeyboardExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 13;
 				DEVELOPMENT_TEAM = RC94H8KQYA;
@@ -574,9 +572,9 @@
 		E27822E32FF1F2A800255D0E /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = AvarKeyboardExtension/AvarKeyboardExtension.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
-				CODE_SIGN_ENTITLEMENTS = AvarKeyboardExtension/AvarKeyboardExtension.entitlements;
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 13;
 				DEVELOPMENT_TEAM = "";

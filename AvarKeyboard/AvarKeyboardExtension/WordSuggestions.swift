@@ -4,7 +4,7 @@
 //
 //  Created by Enver Eskendarov on 6/28/26.
 //
-//  Reader for the bundled, read-only `lezgi_words.sqlite` artifact.
+//  Reader for the bundled, read-only `avar_words.sqlite` artifact.
 //  Schema, metadata and the base_score contract: docs/ARTIFACT_CONTRACT.md.
 //
 
@@ -34,14 +34,14 @@ final class WordSuggestions {
 
     init?(databaseURL: URL? = nil) {
         let url = databaseURL ?? Bundle(for: WordSuggestions.self)
-            .url(forResource: "lezgi_words", withExtension: "sqlite")
+            .url(forResource: "avar_words", withExtension: "sqlite")
         guard let url else { return nil }
         guard sqlite3_open_v2(url.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
             sqlite3_close(db)
             return nil
         }
 
-        metadata = ArtifactMetadata.read(from: db, expecting: "lezgi_words")
+        metadata = ArtifactMetadata.read(from: db, expecting: "avar_words")
         // An artifact from the future is treated as absent: reading the
         // dictionary wrongly is worse than having no dictionary.
         if let metadata, metadata.minReaderSchema > Self.supportedSchemaVersion {

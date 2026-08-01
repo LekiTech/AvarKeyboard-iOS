@@ -156,7 +156,6 @@
       }
     },
     "Over 20,000 Avar words, fully offline" : {
-      "comment" : "TODO(Avar): claim is aspirational until avar_words.sqlite replaces the inherited Lezgi dictionary.",
       "localizations" : {
         "en" : {
           "stringUnit" : {

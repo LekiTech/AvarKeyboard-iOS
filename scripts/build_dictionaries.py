@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Builds the two bundled, read-only artifacts the keyboard ships with.
 
-    lezgi_words.sqlite     words + base_score + artifact metadata
-    lezgi_bigrams.sqlite   static (prev, word) weights + artifact metadata
+    avar_words.sqlite     words + base_score + artifact metadata
+    avar_bigrams.sqlite   static (prev, word) weights + artifact metadata
 
 Both are regenerated from scratch so a build is reproducible: same input,
 byte-identical output. Run from the repo root:
@@ -33,8 +33,8 @@ from datetime import datetime, timezone
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KEYBOARD = os.path.join(REPO, "AvarKeyboard", "AvarKeyboardExtension")
-WORDS_DB = os.path.join(KEYBOARD, "lezgi_words.sqlite")
-BIGRAMS_DB = os.path.join(KEYBOARD, "lezgi_bigrams.sqlite")
+WORDS_DB = os.path.join(KEYBOARD, "avar_words.sqlite")
+BIGRAMS_DB = os.path.join(KEYBOARD, "avar_bigrams.sqlite")
 
 # Artifact schema — the shape of the tables. Bump when columns change.
 SCHEMA_VERSION = 1
@@ -118,7 +118,7 @@ def trim_like_swift(token: str) -> str:
     return token.strip(_SWIFT_WHITESPACE)
 
 
-def lezgi_letter_count(token: str) -> int:
+def letter_count(token: str) -> int:
     return sum(0 if ch in DIGRAPH_TAILS else 1 for ch in token)
 
 
@@ -155,7 +155,7 @@ def contract_violations(token: str) -> list[str]:
       where the replacement math expects a single token
     """
     issues = []
-    if lezgi_letter_count(token) < 2:
+    if letter_count(token) < 2:
         issues.append("fewer than two Lezgi letters")
     if any(ch.isspace() for ch in token):
         issues.append("internal whitespace")
@@ -247,7 +247,7 @@ def build_words(check_only: bool) -> int:
         """)
         con.executemany("INSERT INTO words(word, base_score) VALUES(?, ?)",
                         [(w, NEUTRAL_BASE_SCORE) for w in words])
-        write_meta(con, len(words), "lezgi_words")
+        write_meta(con, len(words), "avar_words")
         con.commit()
         con.execute("VACUUM")
     finally:
@@ -281,7 +281,7 @@ def build_bigrams(check_only: bool) -> int:
             ) WITHOUT ROWID
         """)
         con.executemany("INSERT INTO bigrams(prev, word, weight) VALUES(?, ?, ?)", pairs)
-        write_meta(con, len(pairs), "lezgi_bigrams")
+        write_meta(con, len(pairs), "avar_bigrams")
         con.commit()
         con.execute("VACUUM")
     finally:

@@ -235,7 +235,7 @@ final class PrefixRangeTests: XCTestCase {
         let repo = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         let path = repo.appendingPathComponent(
-            "AvarKeyboard/AvarKeyboardExtension/lezgi_words.sqlite").path
+            "AvarKeyboard/AvarKeyboardExtension/avar_words.sqlite").path
         var real: OpaquePointer?
         XCTAssertEqual(sqlite3_open_v2(path, &real, SQLITE_OPEN_READONLY, nil), SQLITE_OK)
         defer { sqlite3_close(real) }
@@ -254,13 +254,15 @@ final class PrefixRangeTests: XCTestCase {
             return out
         }
 
-        // Every first-row letter of the layout, plus the digraph prefixes
-        // that are the risky ones.
-        let prefixes = ["й", "ц", "у", "к", "е", "н", "г", "ш", "ъ", "з", "х",
-                        "кӏ", "къ", "кь", "гъ", "гь", "хъ", "хь", "цӏ", "чӏ", "тӏ", "пӏ", "уь"]
-        // «ъ» is a modifier, never word-initial in Lezgi, so its range is
-        // legitimately empty — the equivalence must still hold for it.
-        let neverWordInitial: Set<String> = ["ъ"]
+        // Every first-row letter of the Avar layout, plus the digraph
+        // prefixes that are the risky ones.
+        let prefixes = ["й", "ц", "у", "к", "е", "н", "г", "ш", "щ", "з", "х",
+                        "кӏ", "къ", "кь", "гӏ", "гъ", "гь", "хӏ", "хъ", "хь",
+                        "цӏ", "чӏ", "тӏ", "лъ", "лӏ", "ъ", "ы"]
+        // «ъ», «ы», and the rare «лӏ» are never word-initial in Avar, so
+        // their ranges are legitimately empty — the equivalence must still
+        // hold for them.
+        let neverWordInitial: Set<String> = ["ъ", "ы", "лӏ"]
         for prefix in prefixes {
             let byRange = rows("SELECT word FROM words WHERE word >= ?1 AND word < ?2 ORDER BY word",
                                [prefix, prefix + "\u{10FFFF}"])
@@ -271,7 +273,7 @@ final class PrefixRangeTests: XCTestCase {
                 XCTAssertFalse(byRange.isEmpty,
                                "\(prefix) should match something in a 20k dictionary")
             } else {
-                XCTAssertTrue(byRange.isEmpty, "\(prefix) is not word-initial in Lezgi")
+                XCTAssertTrue(byRange.isEmpty, "\(prefix) is not word-initial in Avar")
             }
         }
     }

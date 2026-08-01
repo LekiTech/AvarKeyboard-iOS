@@ -57,9 +57,6 @@ struct ContentView: View {
     // MARK: - Feature cards
 
     private var features: some View {
-        // TODO(Avar): the keyboard still ships the inherited lezgi_words.sqlite
-        // dictionary. Revisit the word-suggestions claim below once the Avar
-        // dictionary lands.
         VStack(spacing: 12) {
             FeatureCard(icon: "textformat.abc", tint: .blue,
                         title: "Full Avar alphabet",

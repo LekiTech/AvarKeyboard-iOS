@@ -59,7 +59,7 @@ final class RankingIntegrationTests: XCTestCase {
             sqlite3_exec(db, "INSERT INTO words(word, base_score) VALUES('\(word)', \(score))", nil, nil, nil)
         }
         sqlite3_exec(db, "CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT NOT NULL)", nil, nil, nil)
-        for (k, v) in [("artifact", "lezgi_words"), ("schema_version", "1"),
+        for (k, v) in [("artifact", "avar_words"), ("schema_version", "1"),
                        ("content_version", "1"), ("normalization_version", "1"),
                        ("min_reader_schema", "1"), ("row_count", "\(words.count)")] {
             sqlite3_exec(db, "INSERT INTO meta VALUES('\(k)','\(v)')", nil, nil, nil)
@@ -78,7 +78,7 @@ final class RankingIntegrationTests: XCTestCase {
             sqlite3_exec(db, "INSERT INTO bigrams VALUES('\(prev)','\(word)',\(weight))", nil, nil, nil)
         }
         sqlite3_exec(db, "CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT NOT NULL)", nil, nil, nil)
-        for (k, v) in [("artifact", "lezgi_bigrams"), ("schema_version", "1"),
+        for (k, v) in [("artifact", "avar_bigrams"), ("schema_version", "1"),
                        ("content_version", "1"), ("normalization_version", "1"),
                        ("min_reader_schema", "1"), ("row_count", "\(pairs.count)")] {
             sqlite3_exec(db, "INSERT INTO meta VALUES('\(k)','\(v)')", nil, nil, nil)

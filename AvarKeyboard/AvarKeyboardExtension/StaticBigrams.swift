@@ -2,11 +2,13 @@
 //  StaticBigrams.swift
 //  AvarKeyboardExtension
 //
-//  Reader for the bundled, read-only `lezgi_bigrams.sqlite` artifact:
+//  Reader for the bundled, read-only `avar_bigrams.sqlite` artifact:
 //  corpus-derived (previous word → next word) weights that give the
 //  dictionary some sense of context.
 //
-//  The artifact ships EMPTY. Everything here is written so that an empty
+//  The artifact ships EMPTY. TODO(Avar): rebuild it with a reviewed Avar
+//  corpus via scripts/build_dictionaries.py when one exists.
+//  Everything here is written so that an empty
 //  or missing file produces exactly the released behavior — see
 //  docs/ARTIFACT_CONTRACT.md §4 for the precedence contract, and
 //  StaticBigramsTests for the equivalence test that proves it.
@@ -29,14 +31,14 @@ final class StaticBigrams {
 
     init?(databaseURL: URL? = nil) {
         let url = databaseURL ?? Bundle(for: StaticBigrams.self)
-            .url(forResource: "lezgi_bigrams", withExtension: "sqlite")
+            .url(forResource: "avar_bigrams", withExtension: "sqlite")
         guard let url else { return nil }
         guard sqlite3_open_v2(url.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
             sqlite3_close(db)
             return nil
         }
 
-        metadata = ArtifactMetadata.read(from: db, expecting: "lezgi_bigrams")
+        metadata = ArtifactMetadata.read(from: db, expecting: "avar_bigrams")
         if let metadata, metadata.minReaderSchema > Self.supportedSchemaVersion {
             sqlite3_close(db)
             return nil

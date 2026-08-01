@@ -9,7 +9,7 @@ to produce them. Never edit an artifact by hand.
 
 ## 1. Artifacts
 
-### `lezgi_words.sqlite`
+### `avar_words.sqlite`
 
 ```
 words(word TEXT PRIMARY KEY, base_score INTEGER NOT NULL DEFAULT 0) WITHOUT ROWID
@@ -27,7 +27,7 @@ against personal learning counters. Production ships **0 for every word**
 until a reviewed corpus exists, which makes the ordering degrade exactly to
 the released behavior (shortest first).
 
-### `lezgi_bigrams.sqlite`
+### `avar_bigrams.sqlite`
 
 ```
 bigrams(prev TEXT NOT NULL, word TEXT NOT NULL, weight INTEGER NOT NULL,
@@ -48,7 +48,7 @@ take the dictionary down with it.
 
 | Key | Meaning |
 |---|---|
-| `artifact` | `lezgi_words` / `lezgi_bigrams` — guards against loading the wrong file |
+| `artifact` | `avar_words` / `avar_bigrams` — guards against loading the wrong file |
 | `schema_version` | shape of the tables; bump when columns change |
 | `content_version` | data revision; bump on every content change |
 | `normalization_version` | which canonical form the rows are in |
