@@ -46,14 +46,16 @@ final class LearnedWords {
     /// longer pass are purged once per bump.
     private static let filtersVersion = 1
 
-    /// Digraph tails taken from the layout's long-press alternates (ӏ, ь, ъ).
+    /// Digraph tails taken from the layout's long-press alternates (ӏ, ъ, ь),
+    /// lowercased because the tokens being counted are lowercased while the
+    /// layout's callouts store the palochka in its typed capital form (Ӏ).
     /// A tail extends the previous letter instead of counting as its own, so
-    /// "цӏ" or "къ" is one Lezgi letter even though it is two characters.
+    /// "цӀ" or "къ" is one letter even though it is two characters.
     private static let digraphTails: Set<Character> = {
         var tails = Set<Character>()
         for alternates in KeyboardLayout.callouts.values {
             for alternate in alternates where alternate.count == 2 {
-                if let tail = alternate.last { tails.insert(tail) }
+                if let tail = alternate.lowercased().last { tails.insert(tail) }
             }
         }
         return tails

@@ -48,13 +48,16 @@ enum Normalization {
     ]
 
     /// A digraph tail extends the previous letter instead of counting as its
-    /// own, so "цӏ" and "къ" are ONE Lezgi letter. Derived from the layout's
-    /// long-press alternates so the rule has a single source.
+    /// own, so "цӏ" and "къ" are ONE letter. Derived from the layout's
+    /// long-press alternates so the rule has a single source. The layout
+    /// stores callouts with the typed capital palochka (Ӏ, U+04C0), while
+    /// counting always runs on canonical (lowercased) tokens — so each tail
+    /// is lowercased on the way into the set.
     static let digraphTails: Set<Character> = {
         var tails = Set<Character>()
         for alternates in KeyboardLayout.callouts.values {
             for alternate in alternates where alternate.count == 2 {
-                if let tail = alternate.last { tails.insert(tail) }
+                if let tail = alternate.lowercased().last { tails.insert(tail) }
             }
         }
         tails.insert("ъ")   // the hard sign is a tail even without a callout
