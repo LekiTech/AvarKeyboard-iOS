@@ -55,8 +55,9 @@ final class KeyboardModel: ObservableObject {
     var isCapsLock: Bool { shiftState == .capsLock }
 
     private let wordDB = WordSuggestions()
-    /// Corpus-derived context. Ships empty, so every path through it is a
-    /// no-op until a reviewed corpus exists.
+    /// Corpus-derived context (pairs from the av-ru dictionary's example
+    /// sentences since content_version 2). Every path through it degrades
+    /// to a no-op when the artifact is empty or missing.
     private let staticBigrams = StaticBigrams()
     private let learned = LearnedWords()
     private var lastSpaceTap: Date? = nil
@@ -118,9 +119,9 @@ final class KeyboardModel: ObservableObject {
     ///
     /// The reorder is a **stable** sort on the static weight alone: rows
     /// without a pair keep weight 0 and therefore keep the order SQLite
-    /// produced (base_score, then length). With the shipped empty artifact
-    /// `weights` is always empty and this returns the SQL order untouched,
-    /// which is what makes the released behavior byte-identical.
+    /// produced (base_score, then length). With an empty artifact `weights`
+    /// is always empty and this returns the SQL order untouched — the
+    /// degradation the equivalence tests pin down.
     private func rankedDictionaryWords(for prefix: String, previous: String?) -> [String] {
         let words = wordDB?.suggestions(for: prefix) ?? []
         guard let previous, let staticBigrams, !staticBigrams.isEmpty, words.count > 1
@@ -173,8 +174,6 @@ final class KeyboardModel: ObservableObject {
             // Personal context always wins. The bundled corpus only speaks
             // when personal learning has nothing to say, so a global
             // statistic can never displace what this user actually types.
-            // With the artifact empty — as shipped — this is unreachable
-            // and the released idle behavior is preserved exactly.
             let staticNext = (settings.nextWordSuggestions && personalNext.isEmpty)
                 ? (lastCompletedWord.flatMap { staticBigrams?.nextWords(after: $0) } ?? [])
                 : []

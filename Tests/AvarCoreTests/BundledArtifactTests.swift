@@ -210,8 +210,19 @@ final class BundledArtifactTests: XCTestCase {
 
         let bigrams = try XCTUnwrap(
             StaticBigrams(databaseURL: keyboard.appendingPathComponent("avar_bigrams.sqlite")))
-        XCTAssertTrue(bigrams.isEmpty, "The shipped bigram artifact is intentionally empty")
-        XCTAssertEqual(try XCTUnwrap(bigrams.metadata).normalizationVersion, Normalization.version)
+        XCTAssertFalse(bigrams.isEmpty,
+                       "content_version 2 ships corpus-derived pairs")
+        let bigramsMeta = try XCTUnwrap(bigrams.metadata)
+        XCTAssertEqual(bigramsMeta.normalizationVersion, Normalization.version)
+        XCTAssertGreaterThan(bigramsMeta.rowCount, 1_000)
+        // The heaviest pair of the source corpus must survive the build,
+        // and every suggested continuation must be a dictionary row.
+        let after = bigrams.nextWords(after: "вуго")
+        XCTAssertFalse(after.isEmpty)
+        for word in after {
+            XCTAssertTrue(words.contains(word),
+                          "static suggestion \(word) is not a dictionary row")
+        }
     }
 
     func testShippedDictionaryIsFullyNormalized() throws {

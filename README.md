@@ -7,13 +7,14 @@ of a friendly eagle in a papakha — developed by [LekiTech](https://github.com/
 > [Lezgi Keyboard](https://github.com/LekiTech) codebase under a new identity
 > (Avar Keyboard, `org.lekitech.avarkeyboard`). The **fixed Avar layout and
 > long-press callouts are in place** (`AvarKeyboardExtension/KeyboardLayout.swift`)
-> and the keyboard ships a **63,879-word Avar dictionary** as a versioned
-> artifact (`avar_words.sqlite`, see `docs/ARTIFACT_CONTRACT.md`), alongside
+> and the keyboard ships a **63,879-word Avar dictionary** with
+> corpus-derived `base_score` ranking plus a **5,101-pair static bigram
+> artifact**, both versioned artifacts built by
+> `scripts/build_dictionaries.py` from the av-ru dictionary source
+> (`docs/ARTIFACT_CONTRACT.md`, `docs/AVAR_DATA_BRIEFING.md`), alongside
 > the hardened learned store, migration registry, and the inert contribution
 > outbox/bridge inherited from the shared engine. Remaining `TODO(Avar)` work:
 >
-> - static bigram corpus — `avar_bigrams.sqlite` ships intentionally empty
->   until a reviewed Avar corpus exists (`scripts/build_dictionaries.py`)
 > - localization review: in-keyboard UI strings, key labels, and emoji
 >   category titles — `KeyboardLayout.swift`, `KeyboardView.swift`,
 >   `SettingsPanelView.swift`, `EmojiData.swift` / `scripts/gen_emoji.py`

@@ -6,10 +6,10 @@
 //  corpus-derived (previous word → next word) weights that give the
 //  dictionary some sense of context.
 //
-//  The artifact ships EMPTY. TODO(Avar): rebuild it with a reviewed Avar
-//  corpus via scripts/build_dictionaries.py when one exists.
-//  Everything here is written so that an empty
-//  or missing file produces exactly the released behavior — see
+//  Since content_version 2 the artifact carries pairs derived from the
+//  av-ru dictionary's example sentences (scripts/build_dictionaries.py,
+//  docs/AVAR_DATA_BRIEFING.md). Everything here is still written so that
+//  an empty or missing file produces exactly the released behavior — see
 //  docs/ARTIFACT_CONTRACT.md §4 for the precedence contract, and
 //  StaticBigramsTests for the equivalence test that proves it.
 //

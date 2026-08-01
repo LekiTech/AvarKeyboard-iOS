@@ -5,17 +5,46 @@
     avar_bigrams.sqlite   static (prev, word) weights + artifact metadata
 
 Both are regenerated from scratch so a build is reproducible: same input,
-byte-identical output. Run from the repo root:
+same output (modulo the generated_at timestamp). Run from the repo root:
 
-    python3 scripts/build_dictionaries.py            # rebuild both
-    python3 scripts/build_dictionaries.py --check    # report, write nothing
+    python3 scripts/build_dictionaries.py --source av-ru.dictionary.jsonl
+    python3 scripts/build_dictionaries.py --source ... --check   # report only
+    python3 scripts/build_dictionaries.py            # repack existing artifacts
+    python3 scripts/build_dictionaries.py --check    # verify, write nothing
 
-WHAT THIS SCRIPT DOES NOT DO
-----------------------------
-It does not invent linguistic data. Every word keeps base_score = 0
-(NEUTRAL_BASE_SCORE) until a reviewed corpus exists, and the bigram
-artifact ships empty. Those are the states the runtime must degrade to
-cleanly, so they are the states we ship first.
+SOURCE
+------
+`--source` takes the av-ru dictionary in JSONL form (one JSON object per
+line; 22 842 entries). Provenance: docs/av-ru.dictionary.jsonl from
+beched/avar-language-expert (upstream avar-me/sources, data/av-ru.jsonl),
+lexicographic base — Gimbatov's Avar-Russian dictionary (Makhachkala,
+2006). Measurements and decisions: docs/AVAR_DATA_BRIEFING.md.
+
+WHAT GOES INTO EACH ARTIFACT (content_version 2)
+------------------------------------------------
+Words: `word` ∪ `forms` ∪ `gender_forms` of every entry, minus tokens
+starting with "-" (bound enclitic morphemes — never free-standing).
+
+base_score — corpus-frequency dominant, article-size prior as tiebreak:
+
+    base_score(w) = 10 * freq(w) + min(9, prior(w))
+
+where freq(w) counts w in the entries' Avar example sentences (36 845
+clean, orthographically reviewed examples) and prior(w) sums, over every
+entry whose surface set contains w, that entry's number of senses plus
+examples — a lexicographic prior of commonness. The prior is capped
+below one frequency unit, so real corpus evidence always outranks it;
+homonym entries sum their signals. base_score stays opaque to the
+runtime: it only orders candidates within the dictionary tier.
+
+Bigrams: adjacent token pairs inside one example (tokens are Cyrillic
+runs with internal hyphens, canonicalized). A pair is kept when both
+tokens are contract-valid, both are rows of the words artifact, and the
+pair occurs at least MIN_BIGRAM_COUNT times — 89% of raw pairs are
+hapaxes and carry no reusable signal. weight = raw count.
+
+Without `--source` the script repacks the existing artifacts verbatim
+(preserving scores and pairs) — it never silently degrades data.
 
 NORMALIZATION
 -------------
@@ -25,10 +54,13 @@ the two must be changed together and NORMALIZATION_VERSION bumped.
 """
 
 import argparse
+import json
 import os
+import re
 import sqlite3
 import sys
 import unicodedata
+from collections import Counter
 from datetime import datetime, timezone
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -39,16 +71,26 @@ BIGRAMS_DB = os.path.join(KEYBOARD, "avar_bigrams.sqlite")
 # Artifact schema — the shape of the tables. Bump when columns change.
 SCHEMA_VERSION = 1
 # Data revision — bump on every content change, even without a schema change.
-CONTENT_VERSION = 1
+# v2: base_score from the av-ru example corpus + article-size prior; bigram
+# artifact filled from the same corpus (was: neutral scores, empty bigrams).
+CONTENT_VERSION = 2
 # Canonical normalization — bump when the rules below change, which forces
 # a rebuild of every artifact and a migration of learned data.
 NORMALIZATION_VERSION = 1
 # Oldest runtime that can read this artifact correctly.
 MIN_READER_SCHEMA = 1
 
-# No corpus yet: every word is equally weighted, so ordering degrades to
-# the released behavior (shortest first).
+# Fallback when a word carries no corpus signal at all: 0 = neutral, and
+# ordering degrades to the released behavior (shortest first).
 NEUTRAL_BASE_SCORE = 0
+# Corpus frequency dominates; the lexicographic prior only breaks ties.
+FREQ_WEIGHT = 10
+PRIOR_CAP = 9
+# 89% of raw corpus bigrams are hapaxes — below this count a pair is noise.
+MIN_BIGRAM_COUNT = 2
+
+# Tokens inside Avar example sentences: Cyrillic runs, internal hyphens OK.
+TOKEN_RE = re.compile(r"[Ѐ-ӿ]+(?:-[Ѐ-ӿ]+)*")
 
 PALOCHKA = "ӏ"          # ӏ CYRILLIC SMALL LETTER PALOCHKA — canonical
 PALOCHKA_UPPER = "Ӏ"    # Ӏ its uppercase form
@@ -162,14 +204,73 @@ def contract_violations(token: str) -> list[str]:
     return issues
 
 
-def read_source_words(path: str) -> list[str]:
+def read_artifact_words(path: str) -> list[tuple[str, int]]:
     if not os.path.exists(path):
         return []
     con = sqlite3.connect(path)
     try:
-        return [row[0] for row in con.execute("SELECT word FROM words")]
+        return list(con.execute("SELECT word, base_score FROM words"))
     finally:
         con.close()
+
+
+def read_artifact_bigrams(path: str) -> list[tuple[str, str, int]]:
+    if not os.path.exists(path):
+        return []
+    con = sqlite3.connect(path)
+    try:
+        return list(con.execute("SELECT prev, word, weight FROM bigrams"))
+    finally:
+        con.close()
+
+
+class SourceData:
+    """Everything derived from the av-ru JSONL in one pass."""
+
+    def __init__(self, path: str):
+        self.surface_raw: list[str] = []      # word ∪ forms ∪ gender_forms, raw
+        self.prior: Counter = Counter()       # normalized surface → summed prior
+        self.freq: Counter = Counter()        # normalized corpus token → count
+        self.raw_bigrams: Counter = Counter() # (prev, word) → count
+        self.enclitics_skipped = 0
+        self.example_count = 0
+
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                entry = json.loads(line)
+                surfaces = ([entry["word"]] + entry.get("forms", [])
+                            + entry.get("gender_forms", []))
+                kept = []
+                for token in surfaces:
+                    # Hyphen-initial entries are bound enclitic morphemes
+                    # (-ги, -цин, …): real morphology, but never free-standing
+                    # tokens, so they are not dictionary rows.
+                    if token.startswith("-"):
+                        self.enclitics_skipped += 1
+                        continue
+                    kept.append(token)
+                self.surface_raw.extend(kept)
+
+                senses = entry.get("senses", [])
+                examples = [ex.get("av", "")
+                            for s in senses for ex in s.get("examples", [])]
+                # Lexicographic prior: bigger articles describe commoner
+                # words. Propagated from the headword to every form; homonym
+                # entries with the same surface simply sum.
+                prior = len(senses) + len(examples)
+                for token in {normalize(t) for t in kept}:
+                    self.prior[token] += prior
+
+                for av in examples:
+                    self.example_count += 1
+                    tokens = [normalize(t) for t in TOKEN_RE.findall(av)]
+                    self.freq.update(tokens)
+                    for pair in zip(tokens, tokens[1:]):
+                        self.raw_bigrams[pair] += 1
+
+    def base_score(self, word: str) -> int:
+        score = FREQ_WEIGHT * self.freq.get(word, 0) + min(PRIOR_CAP, self.prior.get(word, 0))
+        return score if score else NEUTRAL_BASE_SCORE
 
 
 def write_meta(con: sqlite3.Connection, rows: int, kind: str) -> None:
@@ -188,15 +289,18 @@ def write_meta(con: sqlite3.Connection, rows: int, kind: str) -> None:
     )
 
 
-def build_words(check_only: bool) -> int:
-    source = read_source_words(WORDS_DB)
-    if not source:
+def build_words(check_only: bool, source: "SourceData | None") -> int:
+    if source is not None:
+        raw_words = source.surface_raw
+    else:
+        raw_words = [w for w, _ in read_artifact_words(WORDS_DB)]
+    if not raw_words:
         print("ERROR: no source words found — refusing to write an empty dictionary",
               file=sys.stderr)
         return 1
 
     repaired, dropped, kept_dirty, seen = [], [], [], {}
-    for raw in source:
+    for raw in raw_words:
         norm = normalize(raw)
         if why := is_unusable(norm):
             dropped.append((raw, why))
@@ -208,12 +312,31 @@ def build_words(check_only: bool) -> int:
         seen.setdefault(norm, raw)
 
     words = sorted(seen)
-    merged = len(source) - len(dropped) - len(words)
-    print(f"words: {len(source)} in → {len(words)} out "
+    if source is not None:
+        rows = [(w, source.base_score(w)) for w in words]
+    else:
+        # Repack: preserve the scores already shipped.
+        existing = dict(read_artifact_words(WORDS_DB))
+        rows = [(w, existing.get(w, NEUTRAL_BASE_SCORE)) for w in words]
+
+    merged = len(raw_words) - len(dropped) - len(words)
+    scored = sum(1 for _, s in rows if s > 0)
+    print(f"words: {len(raw_words)} in → {len(words)} out "
           f"({len(repaired)} repaired, {merged} merged duplicates, "
-          f"{len(dropped)} dropped, {len(kept_dirty)} kept with warnings)")
-    for raw, norm in repaired:
-        print(f"  repaired {raw!r} → {norm!r}")
+          f"{len(dropped)} dropped, {len(kept_dirty)} kept with warnings); "
+          f"{scored} rows carry a base_score signal")
+    if source is not None:
+        print(f"  enclitic tokens skipped: {source.enclitics_skipped}")
+        # The word SET must not drift when only scores change: compare
+        # against the artifact being replaced.
+        old = {w for w, _ in read_artifact_words(WORDS_DB)}
+        if old:
+            added, removed = sorted(set(words) - old), sorted(old - set(words))
+            print(f"  word-set drift vs shipped artifact: +{len(added)} -{len(removed)}")
+            for w in added[:10]:
+                print(f"    + {w!r}")
+            for w in removed[:10]:
+                print(f"    - {w!r}")
     for raw, why in dropped:
         print(f"  DROPPED {raw!r}: {why}")
     if kept_dirty:
@@ -245,8 +368,7 @@ def build_words(check_only: bool) -> int:
                 base_score INTEGER NOT NULL DEFAULT 0
             ) WITHOUT ROWID
         """)
-        con.executemany("INSERT INTO words(word, base_score) VALUES(?, ?)",
-                        [(w, NEUTRAL_BASE_SCORE) for w in words])
+        con.executemany("INSERT INTO words(word, base_score) VALUES(?, ?)", rows)
         write_meta(con, len(words), "avar_words")
         con.commit()
         con.execute("VACUUM")
@@ -257,12 +379,40 @@ def build_words(check_only: bool) -> int:
     return 0
 
 
-def build_bigrams(check_only: bool) -> int:
-    # Ships EMPTY on purpose: there is no reviewed corpus yet, and the
-    # runtime must degrade to the released behavior when no pair matches.
-    pairs: list[tuple[str, str, int]] = []
-    print(f"bigrams: {len(pairs)} pairs (empty artifact is expected until a "
-          f"reviewed corpus exists)")
+def build_bigrams(check_only: bool, source: "SourceData | None",
+                  words_in_artifact: set[str]) -> int:
+    if source is not None:
+        # Both tokens must be contract-valid, and `word` must be a row of
+        # the words artifact: nextWords surfaces it directly, so it must
+        # never suggest an out-of-dictionary string. `prev` is only ever a
+        # lookup key compared against what the user actually typed, so an
+        # out-of-dictionary prev (an inflected form the dictionary lacks)
+        # is still a perfectly good key. Hapax pairs are dropped: with 89%
+        # of raw pairs seen once, they are noise, not reusable context.
+        dropped_invalid = dropped_unknown = dropped_rare = 0
+        pairs = []
+        for (prev, word), count in sorted(source.raw_bigrams.items()):
+            if count < MIN_BIGRAM_COUNT:
+                dropped_rare += 1
+                continue
+            if any(is_unusable(t) or contract_violations(t) for t in (prev, word)):
+                dropped_invalid += 1
+                continue
+            if word not in words_in_artifact:
+                dropped_unknown += 1
+                continue
+            pairs.append((prev, word, count))
+        print(f"bigrams: {len(source.raw_bigrams)} raw pairs from "
+              f"{source.example_count} examples → {len(pairs)} kept "
+              f"({dropped_rare} below count {MIN_BIGRAM_COUNT}, "
+              f"{dropped_invalid} contract-invalid, "
+              f"{dropped_unknown} with out-of-dictionary tokens)")
+        for (prev, word), count in source.raw_bigrams.most_common(5):
+            print(f"  top: {prev!r} {word!r} × {count}")
+    else:
+        # Repack: preserve the pairs already shipped.
+        pairs = sorted(read_artifact_bigrams(BIGRAMS_DB))
+        print(f"bigrams: repacking {len(pairs)} existing pairs")
     if check_only:
         return 0
 
@@ -295,8 +445,26 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true",
                         help="report what would change without writing")
+    parser.add_argument("--source", metavar="JSONL",
+                        help="av-ru dictionary in JSONL form; without it the "
+                             "existing artifacts are repacked verbatim")
     args = parser.parse_args()
-    return build_words(args.check) or build_bigrams(args.check)
+
+    source = SourceData(args.source) if args.source else None
+    status = build_words(args.check, source)
+    if status:
+        return status
+    if source is not None:
+        # The bigram membership gate uses the words that were just written
+        # (or would be written, under --check): recompute the same set.
+        words = set()
+        for raw in source.surface_raw:
+            norm = normalize(raw)
+            if not is_unusable(norm):
+                words.add(norm)
+    else:
+        words = {w for w, _ in read_artifact_words(WORDS_DB)}
+    return build_bigrams(args.check, source, words)
 
 
 if __name__ == "__main__":

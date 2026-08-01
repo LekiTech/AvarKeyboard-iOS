@@ -35,9 +35,13 @@ bigrams(prev TEXT NOT NULL, word TEXT NOT NULL, weight INTEGER NOT NULL,
 meta(key TEXT PRIMARY KEY, value TEXT NOT NULL)
 ```
 
-**Ships empty (0 rows).** There is no reviewed corpus yet, and an empty
-artifact is the state the runtime must degrade cleanly to — so it is the
-state we ship first, with a regression test proving equivalence.
+**Ships with corpus-derived pairs since content_version 2** — adjacent-token
+pairs from the av-ru dictionary's 36,845 Avar example sentences, kept when
+seen at least twice, both tokens contract-valid, and the suggested `word` is
+a row of the words artifact (see `scripts/build_dictionaries.py` and
+docs/AVAR_DATA_BRIEFING.md). An empty artifact remains a fully supported
+state the runtime must degrade cleanly to, with a regression test proving
+equivalence.
 
 Kept as a separate file from the word list, as approved: it changes on a
 different cadence, a future corpus update should not force the word list to
