@@ -88,7 +88,7 @@ final class NormalizationTests: XCTestCase {
 
     // MARK: - Digraphs and validity
 
-    func testDigraphCountsAsOneLezgiLetter() {
+    func testDigraphCountsAsOneLetter() {
         XCTAssertEqual(Normalization.letterCount("цӏ"), 1)
         XCTAssertEqual(Normalization.letterCount("къ"), 1)
         XCTAssertEqual(Normalization.letterCount("кӏвал"), 4, "к ӏ в а л -> кӏ,в,а,л")

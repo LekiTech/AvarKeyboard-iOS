@@ -72,7 +72,7 @@ LATIN_TO_CYRILLIC = {
 }
 
 # Digraph tails: a tail extends the previous letter instead of counting as
-# its own, so "цӏ" and "къ" are ONE Lezgi letter. Mirrors KeyboardLayout.
+# its own, so "цӏ" and "къ" are ONE letter. Mirrors KeyboardLayout.
 DIGRAPH_TAILS = {PALOCHKA, "ь", "ъ"}
 
 MAX_WORD_LENGTH = 64
@@ -156,7 +156,7 @@ def contract_violations(token: str) -> list[str]:
     """
     issues = []
     if letter_count(token) < 2:
-        issues.append("fewer than two Lezgi letters")
+        issues.append("fewer than two letters")
     if any(ch.isspace() for ch in token):
         issues.append("internal whitespace")
     return issues

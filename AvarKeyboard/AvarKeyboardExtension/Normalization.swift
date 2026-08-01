@@ -2,7 +2,7 @@
 //  Normalization.swift
 //  AvarKeyboardExtension
 //
-//  The canonical form of a Lezgi token — one definition for the bundled
+//  The canonical form of an Avar token — one definition for the bundled
 //  dictionary, the static bigrams, learned words, learned bigrams, future
 //  contribution batches, and future server processing. A word must be the
 //  same word in all six places or none of them can be joined.
@@ -99,7 +99,7 @@ enum Normalization {
         Array(canonical(token).unicodeScalars) == Array(token.unicodeScalars)
     }
 
-    /// Lezgi letters in a canonical token, digraphs counted as one.
+    /// Letters in a canonical token, digraphs counted as one.
     static func letterCount(_ token: String) -> Int {
         token.reduce(0) { digraphTails.contains($1) ? $0 : $0 + 1 }
     }
@@ -113,7 +113,7 @@ enum Normalization {
     static func isValidToken(_ token: String) -> Bool {
         // Scalars, not Characters: Python's len() counts code points, and
         // the two halves of the contract must measure length identically.
-        // On canonical (NFC) Lezgi text the two counts agree anyway; they
+        // On canonical (NFC) Avar text the two counts agree anyway; they
         // diverge only on combining-mark sequences, exactly where an
         // implicit disagreement would hide.
         guard !token.isEmpty, token.unicodeScalars.count <= 64 else { return false }

@@ -192,7 +192,7 @@ final class MigrationTests: XCTestCase {
 
     func testRowsThatBecomeInvalidAreRemovedWithTheirPairs() throws {
         let now = Int64(Date().timeIntervalSince1970)
-        // "цi" canonicalizes to "цӏ" — a lone digraph, one Lezgi letter,
+        // "цi" canonicalizes to "цӏ" — a lone digraph, one letter,
         // which the contract forbids storing.
         try makeLegacyDatabase(
             words: [("цi", 4, 0, now), ("хайи", 2, 0, now)],

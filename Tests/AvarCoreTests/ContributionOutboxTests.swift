@@ -34,7 +34,7 @@ final class ContributionOutboxTests: XCTestCase {
         Date(timeIntervalSince1970: 1_700_000_000 - Double(daysAgo) * 86_400)
     }
 
-    /// Distinct, contract-valid Lezgi tokens for capacity tests — digits
+    /// Distinct, contract-valid tokens for capacity tests — digits
     /// would be refused at the door, so distinctness comes from letters.
     private func distinctKey(_ i: Int) -> String {
         let letters = ["а", "б", "в", "г", "д", "е", "ж", "з", "и", "к"]

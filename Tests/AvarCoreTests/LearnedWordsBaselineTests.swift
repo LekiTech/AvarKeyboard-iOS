@@ -70,7 +70,7 @@ final class LearnedWordsBaselineTests: XCTestCase {
 
     // MARK: - Learnability filter (the "hook")
 
-    func testAcceptsOrdinaryLezgiWords() throws {
+    func testAcceptsOrdinaryWords() throws {
         let store = try makeStore()
         for word in ["хайи", "мурад", "кӏвал", "къуьл"] {
             store.learn(word, previous: nil, picked: false)
@@ -86,9 +86,9 @@ final class LearnedWordsBaselineTests: XCTestCase {
         }
     }
 
-    func testRejectsTokensShorterThanTwoLezgiLetters() throws {
+    func testRejectsTokensShorterThanTwoLetters() throws {
         let store = try makeStore()
-        // A digraph is ONE Lezgi letter even though it is two characters,
+        // A digraph is ONE letter even though it is two characters,
         // so "цӏ" is rejected while the two-letter "ва" is accepted.
         store.learn("ц", previous: nil, picked: false)
         store.learn("цӏ", previous: nil, picked: false)

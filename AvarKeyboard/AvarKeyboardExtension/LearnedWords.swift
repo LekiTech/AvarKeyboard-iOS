@@ -61,7 +61,7 @@ final class LearnedWords {
         return tails
     }()
 
-    /// Number of Lezgi letters in a lowercased token, counting digraphs as
+    /// Number of letters in a lowercased token, counting digraphs as
     /// single letters.
     private static func letterCount(_ word: String) -> Int {
         word.reduce(0) { digraphTails.contains($1) ? $0 : $0 + 1 }
@@ -210,7 +210,7 @@ final class LearnedWords {
     deinit { sqlite3_close(db) }
 
     /// Words worth learning: no digits, no email/URL fragments, and at least
-    /// two Lezgi letters — a lone digraph like "цӏ" is still one letter.
+    /// two letters — a lone digraph like "цӏ" is still one letter.
     /// Separators never reach here (the prefix tokenizer splits on them),
     /// but pasted text can still carry such tokens past a space.
     private func isLearnable(_ word: String) -> Bool {
