@@ -257,11 +257,23 @@ final class KeyboardModel: ObservableObject {
     /// Shared display form for every suggestion type — learned, dictionary,
     /// and idle-bar fallback words all go through here.
     ///
+    /// Project-wide palochka convention: everything the user SEES carries
+    /// the typed uppercase palochka Ӏ (U+04C0) — key labels, suggestions,
+    /// inserted text, the saved-words page — while every stored row is
+    /// canonical (ӏ, U+04CF, via `Normalization.canonical`). This is the
+    /// one-way presentation mapping; it is safe because every storage
+    /// boundary (learn, lookup, delete, dedup) re-canonicalizes its input,
+    /// so a round trip Ӏ → ӏ → Ӏ never loses a word.
+    private static func visiblePalochka(_ word: String) -> String {
+        word.replacingOccurrences(of: "ӏ", with: "Ӏ")
+    }
+
     /// A typed prefix dictates its own case (capitalized prefix → capitalized
     /// word, fully uppercase prefix → uppercase word); with no prefix the
     /// sentence context decides (start of message or after `.` `!` `?` →
     /// capitalized, mid-sentence → as stored); Caps Lock always uppercases.
     private func displayForm(_ word: String, prefix: String, proxy: UITextDocumentProxy) -> String {
+        let word = Self.visiblePalochka(word)
         if isCapsLock { return word.uppercased() }
         if prefix.isEmpty {
             let autocapitalizes = (proxy.autocapitalizationType ?? .sentences) != .none
@@ -270,7 +282,12 @@ final class KeyboardModel: ObservableObject {
                 : word
         }
         guard prefix.first?.isUppercase == true else { return word }
-        let allCaps = prefix.count >= 2 && prefix == prefix.uppercased()
+        // The palochka is caseless by convention but its typed form Ӏ
+        // (U+04C0) is category Lu, so it must not vote in the all-caps
+        // test: «ЦӀ» is a capitalized digraph, not an ALL-CAPS prefix.
+        // Only the case-bearing letters decide.
+        let caseBearing = prefix.filter { $0 != "Ӏ" && $0 != "ӏ" }
+        let allCaps = caseBearing.count >= 2 && caseBearing == caseBearing.uppercased()
         return allCaps ? word.uppercased()
                        : word.prefix(1).uppercased() + word.dropFirst()
     }
@@ -454,6 +471,7 @@ final class KeyboardModel: ObservableObject {
     func savedWords(limit: Int = 5000) -> [String] {
         (learned?.topWords(limit: limit) ?? [])
             .filter { wordDB?.contains($0) != true }
+            .map(Self.visiblePalochka)   // delete re-canonicalizes on the way back
     }
 
     private static let wordSeparators = CharacterSet.whitespacesAndNewlines

@@ -155,18 +155,18 @@
         }
       }
     },
-    "Over 20,000 Avar words, fully offline" : {
+    "Over 60,000 Avar words, fully offline" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Over 20,000 Avar words, fully offline"
+            "value" : "Over 60,000 Avar words, fully offline"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Более 20 000 аварских слов, полностью офлайн"
+            "value" : "Более 60 000 аварских слов, полностью офлайн"
           }
         }
       }

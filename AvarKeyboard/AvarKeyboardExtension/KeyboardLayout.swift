@@ -7,10 +7,6 @@
 //  Single source of truth for key definitions, labels, callouts, and sizing.
 //  To add or reorder keys, edit letterRows only.
 //
-//  TODO(Avar): localization review — the space / return key labels
-//  (label(for:), returnLabel(for:)) are still the inherited wording and
-//  need Avar translations.
-//
 
 import SwiftUI
 
@@ -108,8 +104,8 @@ enum KeyboardLayout {
         case .globe:            return "🌐"
         case .emoji:            return "😀"
         case .settings:         return ""    // gear icon, rendered by KeyButton
-        case .space:            return "Ара"
-        case .return:           return "Ракъун"
+        case .space:            return "Пробел"
+        case .return:           return "Ввод"
         }
     }
 
@@ -129,22 +125,20 @@ enum KeyboardLayout {
 
     // MARK: - Return key
 
-    /// Action label for the return key, in the keyboard's language
-    /// (inherited wording — see the TODO(Avar) header note). `.search` is empty on
+    /// Action label for the return key, in Avar. `.search` is empty on
     /// purpose: it renders as the universal magnifying-glass icon — the
-    /// correct translation («Жагъурун») is too long for a key, and the
-    /// icon is the familiar convention on modern keyboards. An empty
-    /// label means "show an icon".
+    /// familiar convention on modern keyboards. An empty label means
+    /// "show an icon".
     static func returnLabel(for type: UIReturnKeyType) -> String {
         switch type {
-        case .go:               return "Фин"
-        case .send:             return "Ракъурун"
-        case .done:             return "Хьанва"
-        case .next:             return "Къведайди"
-        case .`continue`:       return "Давамрун"
-        case .join:             return "ЭкечIун"
-        case .route:            return "Рехъ"
-        case .emergencyCall:    return "Хаталувилин зенг"
+        case .go:               return "Ине"
+        case .send:             return "БитӀизе"
+        case .done:             return "ЛъугӀана"
+        case .next:             return "Хадусеб"
+        case .`continue`:       return "Давам"
+        case .join:             return "Лъугьине"
+        case .route:            return "Нух"
+        case .emergencyCall:    return "Кумекалъе ахӀи"
         default:                return ""
         }
     }

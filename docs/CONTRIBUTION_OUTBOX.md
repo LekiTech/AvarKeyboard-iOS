@@ -11,8 +11,8 @@ rather than a blank page.
 
 ## 1. Why a queue at all
 
-The long-term goal is a Lezgi corpus improved by the people who actually
-write Lezgi. That needs contributions, and contributions need a place to
+The long-term goal is an Avar corpus improved by the people who actually
+write Avar. That needs contributions, and contributions need a place to
 accumulate between the moment someone types a word and the moment a batch
 is offered for review — a place that survives the extension being killed
 mid-sentence, which iOS does routinely.

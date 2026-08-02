@@ -1,6 +1,6 @@
 # Avar Keyboard for iOS
 
-A native iOS keyboard for the Avar language (авар мацӏ) with a sticker pack
+A native iOS keyboard for the Avar language (авар мацӀ) with a sticker pack
 of a friendly eagle in a papakha — developed by [LekiTech](https://github.com/LekiTech).
 
 > **Project status.** This project reuses the engine of the
@@ -15,11 +15,14 @@ of a friendly eagle in a papakha — developed by [LekiTech](https://github.com/
 > the hardened learned store, migration registry, and the inert contribution
 > outbox/bridge inherited from the shared engine. Remaining `TODO(Avar)` work:
 >
-> - localization review: in-keyboard UI strings, key labels, and emoji
->   category titles — `KeyboardLayout.swift`, `KeyboardView.swift`,
->   `SettingsPanelView.swift`, `EmojiData.swift` / `scripts/gen_emoji.py`
-> - sticker artwork ("lezginka", "lezgiflag") — `StickerSharing.swift`,
->   `scripts/gen_stickers.swift`, `scripts/gen_messenger_stickers.py`
+> - native-speaker review of the new Avar UI strings —
+>   `docs/AVAR_TRANSLATION_REVIEW.md`
+> - native Avar app name for the ru localization —
+>   `AvarKeyboard/AvarKeyboard/Localizable.xcstrings`
+>
+> The in-keyboard UI now speaks Avar (pending native review), and the
+> flag sticker is the Avar flag. The "lezginka" sticker name is kept
+> deliberately — it names the pan-Caucasian dance, not the Lezgi people.
 
 ## The Keyboard
 

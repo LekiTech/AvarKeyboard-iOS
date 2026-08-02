@@ -102,7 +102,7 @@ combining marks); no internal whitespace; no digits; none of `@ / .`; no
 Latin letters left after repair; no control (Cc) or format (Cf)
 characters — controls include U+001F, the contribution outbox's bigram-key
 separator, and formats are the invisibles (ZWJ, bidi marks) that would let
-two identical-looking tokens be distinct rows; at least two Lezgi letters,
+two identical-looking tokens be distinct rows; at least two Avar letters,
 where a digraph tail (`ӏ`, `ь`, `ъ`) extends the previous letter rather
 than counting as its own, so a lone `цӏ` is one letter and therefore
 invalid.
@@ -164,7 +164,7 @@ Why not assigned IDs:
 - **Candidate words cannot use them by definition.** An unknown word has no
   ID yet; that is the whole point of contributing it. A scheme with IDs for
   known words and plaintext for new ones is two schemes.
-- **Payload size does not justify it.** A Lezgi word is ~10 bytes UTF-8;
+- **Payload size does not justify it.** An Avar word is ~10 bytes UTF-8;
   a batch is a few hundred of them.
 - **They introduce a failure mode we would have to operate forever**: an
   append-only ID registry committed to the repo, never regenerated. Lose or

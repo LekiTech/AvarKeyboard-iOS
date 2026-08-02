@@ -18,29 +18,29 @@ struct ImageSticker {
     let phrase: String  // phrase the emotion stands for
 }
 
-// TODO(Avar): phrases and artwork are inherited from the Lezgi pack —
-// "lezginka" and "lezgiflag" (and the phrases) need Avar replacements.
+// "lezginka" is kept deliberately: it names the pan-Caucasian dance,
+// not the Lezgi people.
 let imageStickers: [ImageSticker] = [
     ImageSticker(source: "salam",      phrase: "Салам!"),
-    ImageSticker(source: "thanks",     phrase: "Сагърай!"),
-    ImageSticker(source: "sweetheart", phrase: "Чан!"),
-    ImageSticker(source: "great",      phrase: "Хъсан я!"),
-    ImageSticker(source: "yes",        phrase: "Эхь"),
-    ImageSticker(source: "no",         phrase: "Ваъ"),
-    ImageSticker(source: "howareyou",  phrase: "Вун гьикӀ я?"),
-    ImageSticker(source: "loveyou",    phrase: "Заз вун кӀанда"),
-    ImageSticker(source: "sorry",      phrase: "Багъишламиша"),
-    ImageSticker(source: "bravo",      phrase: "Баркалла!"),
-    ImageSticker(source: "congrats",   phrase: "Мубарак хьуй!"),
-    ImageSticker(source: "welcome",    phrase: "Хушгелди!"),
-    ImageSticker(source: "comehere",   phrase: "Ша!"),
-    ImageSticker(source: "morning",    phrase: "Пакаман хийирар!"),
-    ImageSticker(source: "angry",      phrase: "Бес я!"),
-    ImageSticker(source: "goodnight",  phrase: "Хъсан ахварар!"),
+    ImageSticker(source: "thanks",     phrase: "Баркала!"),
+    ImageSticker(source: "sweetheart", phrase: "Жан!"),
+    ImageSticker(source: "great",      phrase: "ЛъикӀ буго!"),
+    ImageSticker(source: "yes",        phrase: "Гьай-гьай!"),
+    ImageSticker(source: "no",         phrase: "ГьечӀо!"),
+    ImageSticker(source: "howareyou",  phrase: "Иш кин бугеб?"),
+    ImageSticker(source: "loveyou",    phrase: "Дие мун вокьула"),
+    ImageSticker(source: "sorry",      phrase: "ТӀаса лъугьа!"),
+    ImageSticker(source: "bravo",      phrase: "БахӀарчи!"),
+    ImageSticker(source: "congrats",   phrase: "Баркула!"),
+    ImageSticker(source: "welcome",    phrase: "ЛъикӀ щварал!"),
+    ImageSticker(source: "comehere",   phrase: "ВачӀа!"),
+    ImageSticker(source: "morning",    phrase: "ВорчӀами!"),
+    ImageSticker(source: "angry",      phrase: "ГӀела!"),
+    ImageSticker(source: "goodnight",  phrase: "Сордо лъикӀ!"),
     ImageSticker(source: "prayer",     phrase: "Амин!"),
-    ImageSticker(source: "lezginka",   phrase: "Кьуьл ая!"),
-    ImageSticker(source: "khinkal",    phrase: "Нуш хьуй!"),
-    ImageSticker(source: "lezgiflag",  phrase: "Лезгияр"),
+    ImageSticker(source: "lezginka",   phrase: "Кьурде!"),
+    ImageSticker(source: "khinkal",    phrase: "Бисмилла!"),
+    ImageSticker(source: "avarflag",  phrase: "МагӀарулал"),
 ]
 
 // MARK: - Paths

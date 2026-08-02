@@ -63,7 +63,7 @@ struct ContentView: View {
                         subtitle: "Palochka and digraphs like цӀ, къ, лъ are one long press away")
             FeatureCard(icon: "text.book.closed.fill", tint: .orange,
                         title: "Word suggestions",
-                        subtitle: "Over 20,000 Avar words, fully offline")
+                        subtitle: "Over 60,000 Avar words, fully offline")
             FeatureCard(icon: "keyboard.fill", tint: .green,
                         title: "Feels native",
                         subtitle: "Matches the iOS keyboard down to the details")
@@ -117,10 +117,8 @@ struct ContentView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            // TODO(Avar): sticker artwork is inherited from the Lezgi pack —
-            // "lezginka" and "lezgiflag" need Avar replacements before release.
             HStack(spacing: 10) {
-                ForEach(["salam", "loveyou", "lezginka", "khinkal", "lezgiflag"], id: \.self) {
+                ForEach(["salam", "loveyou", "lezginka", "khinkal", "avarflag"], id: \.self) {
                     StickerThumb(name: $0)
                 }
             }

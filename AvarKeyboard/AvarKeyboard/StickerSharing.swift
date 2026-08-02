@@ -28,9 +28,8 @@ enum StickerSharingError: LocalizedError {
 enum StickerSharing {
 
     // must stay in sync with scripts/gen_messenger_stickers.py
-    // TODO(Avar): artwork is inherited from the Lezgi pack — "lezginka" and
-    // "lezgiflag" need Avar replacements (new files + updated names here and
-    // in the scripts) before release.
+    // "lezginka" is kept deliberately: it names the pan-Caucasian dance,
+    // not the Lezgi people.
     private static let stickers: [(file: String, emojis: [String])] = [
         ("salam",      ["👋"]),
         ("thanks",     ["🙏"]),
@@ -51,7 +50,7 @@ enum StickerSharing {
         ("prayer",     ["🤲"]),
         ("lezginka",   ["🕺"]),
         ("khinkal",    ["🥟"]),
-        ("lezgiflag",  ["🦅"]),
+        ("avarflag",   ["🦅"]),
     ]
 
     private static func assetData(_ name: String, _ ext: String) throws -> Data {

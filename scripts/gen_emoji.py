@@ -29,18 +29,16 @@ GROUP_MAP = {
     "Flags": "flags",
 }
 
-# category key -> (title, SF Symbol icon)
-# TODO(Avar): titles are inherited Lezgi strings — translate to Avar and
-# regenerate EmojiData.swift.
+# category key -> (Avar title, SF Symbol icon)
 CATEGORIES = [
-    ("smileys",  "Чинар ва инсанар", "face.smiling"),
-    ("nature",   "Тӏебиат",          "pawprint"),
-    ("food",     "Тӏуьн",            "fork.knife"),
-    ("activity", "Къугъунар",        "soccerball"),
-    ("travel",   "Сиягьат",          "car"),
-    ("objects",  "Затӏар",           "lightbulb"),
-    ("symbols",  "Символар",         "heart"),
-    ("flags",    "Пайдахар",         "flag"),
+    ("smileys",  "Гьурмал ва гӀадамал", "face.smiling"),
+    ("nature",   "ТӀабигӀат",          "pawprint"),
+    ("food",     "Квен",            "fork.knife"),
+    ("activity", "ХӀаял",        "soccerball"),
+    ("travel",   "Сапар",          "car"),
+    ("objects",  "Жал",           "lightbulb"),
+    ("symbols",  "ГӀаламатал",         "heart"),
+    ("flags",    "Байрахъал",         "flag"),
 ]
 
 buckets = {key: [] for key, _, _ in CATEGORIES}

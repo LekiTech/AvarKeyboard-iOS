@@ -157,16 +157,14 @@ struct KeyboardView: View {
     /// long-press on a learned word. Stays entirely inside the keyboard view.
     private func deleteConfirmBar(word: String) -> some View {
         HStack(spacing: 12) {
-            // Keyboard UI speaks the keyboard's language: «стереть слово?» —
-            // «нет» / «стереть». TODO(Avar): inherited Lezgi strings — replace
-            // with Avar translations.
-            Text(verbatim: "“\(word)” чӏурдани?")
+            // Keyboard UI speaks Avar: «стереть слово?» — «нет» / «стереть»
+            Text(verbatim: "“\(word)” гилдизеищ?")
                 .font(.system(size: 15))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Spacer(minLength: 0)
-            confirmPill("Ваъ", emphasized: false) { pendingDeleteWord = nil }
-            confirmPill("Чӏурун", emphasized: true) {
+            confirmPill("Гуро", emphasized: false) { pendingDeleteWord = nil }
+            confirmPill("Гилдизе", emphasized: true) {
                 pendingDeleteWord = nil
                 onSuggestionDelete?(word)
             }
@@ -334,7 +332,7 @@ struct KeyboardView: View {
     }
 
     private func emojiSectionTitle(for category: Int) -> String {
-        category == emojiRecentsID ? "Эхиримжибур" : EmojiData.categories[category].title
+        category == emojiRecentsID ? "Ахирисел" : EmojiData.categories[category].title
     }
 
     private var emojiPage: some View {
@@ -1046,7 +1044,7 @@ private struct KeyButton: View {
                     .opacity(model.showsKeyboardName || !model.settings.spaceLabel ? 0 : 1)
                 if model.showsKeyboardName {
                     // Keyboard name shown centered right after the keyboard appears
-                    Text("Авар мацӏ")
+                    Text("Авар мацӀ")
                         .font(.system(size: 16))
                         .foregroundColor(Color(UIColor.label))
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)

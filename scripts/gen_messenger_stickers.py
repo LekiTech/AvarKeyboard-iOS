@@ -16,9 +16,8 @@ from pathlib import Path
 from PIL import Image
 
 # file stem -> emojis (WhatsApp allows up to 3, Telegram needs at least 1)
-# TODO(Avar): artwork is inherited from the Lezgi pack — "lezginka" and
-# "lezgiflag" need Avar replacements (new source PNGs + renamed entries
-# here, in StickerSharing.swift, and in gen_stickers.swift).
+# "lezginka" is kept deliberately: it names the pan-Caucasian dance,
+# not the Lezgi people.
 STICKERS = [
     ("salam",      ["👋"]),
     ("thanks",     ["🙏"]),
@@ -39,7 +38,7 @@ STICKERS = [
     ("prayer",     ["🤲"]),
     ("lezginka",   ["🕺"]),
     ("khinkal",    ["🥟"]),
-    ("lezgiflag",  ["🦅"]),
+    ("avarflag",   ["🦅"]),
 ]
 
 MAX_STICKER_BYTES = 100_000  # WhatsApp static sticker limit
