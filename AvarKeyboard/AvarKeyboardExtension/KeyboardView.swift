@@ -328,8 +328,9 @@ struct KeyboardView: View {
 
         var columns: [EmojiColumn] = []
         for group in groups {
-            let chunks = stride(from: 0, to: group.emojis.count, by: 5).map {
-                Array(group.emojis[$0..<min($0 + 5, group.emojis.count)])
+            let rows = metrics.emojiRows
+            let chunks = stride(from: 0, to: group.emojis.count, by: rows).map {
+                Array(group.emojis[$0..<min($0 + rows, group.emojis.count)])
             }
             for (ci, chunk) in chunks.enumerated() {
                 columns.append(EmojiColumn(id: columns.count,
@@ -390,7 +391,7 @@ struct KeyboardView: View {
                 Button(action: { onEmojiInsert?(emoji) }) {
                     Text(emoji)
                         .font(.system(size: 26))
-                        .frame(width: 38, height: 33)
+                        .frame(width: 38, height: metrics.emojiCellHeight)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(EmojiKeyButtonStyle())

@@ -23,7 +23,7 @@
 | # | Где используется | English | Русский | Аварский (текущий) | Комментарий |
 |---|---|---|---|---|---|
 | 1 | KeyboardLayout.swift — space key | Space | Пробел | **Гьоркьобакӏ** | из спецификации раскладки (слитное написание) |
-| 2 | KeyboardLayout.swift — return key (default) | Return | Ввод | **Лъей** | из спецификации раскладки |
+| 2 | KeyboardLayout.swift — return key (default) | Return | Ввод | **⏎ (символ)** | обычная клавиша ввода показывает символ возврата, не слово; «Лъей» снято по решению владельца |
 | 3 | KeyboardLayout.swift — return key (Go) | Go | Перейти | **Рагьизе** | из спецификации раскладки |
 | 4 | KeyboardLayout.swift — return key (Send) | Send | Отправить | **БитӀизе** | битӏизе = отправить, послать |
 | 5 | KeyboardLayout.swift — return key (Done) | Done | Готово | **ЛъугӀана** | лъугӏизе = закончиться; past «лъугӏана» = готово/закончилось |

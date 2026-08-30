@@ -87,56 +87,121 @@ final class LayoutStyleTests: XCTestCase {
 
     // MARK: - Symbol layers (exact)
 
-    func testSymbolPagesMatchTheSpecification() {
-        XCTAssertEqual(chars(KeyboardLayout.numberRows[0]),
-                       ["1","2","3","4","5","6","7","8","9","0"])
-        XCTAssertEqual(chars(KeyboardLayout.numberRows[1]),
-                       ["-","/",":",";","(",")","₽","&","@","\""])
-        XCTAssertEqual(KeyboardLayout.numberRows[2],
-                       [.symbols, .spacer(0.25),
-                        .character("."), .character(","), .character("?"),
-                        .character("!"), .character("'"),
-                        .spacer(0.25), .backspace])
+    private let punctuationRow: [KeyCap] =
+        [.symbols, .spacer(0.25),
+         .character("."), .character(","), .character("?"),
+         .character("!"), .character("'"),
+         .spacer(0.25), .backspace]
+    private let punctuationRowSymbols: [KeyCap] =
+        [.numbers, .spacer(0.25),
+         .character("."), .character(","), .character("?"),
+         .character("!"), .character("'"),
+         .spacer(0.25), .backspace]
 
-        XCTAssertEqual(chars(KeyboardLayout.symbolRows[0]),
-                       ["[","]","{","}","#","%","^","*","+","="])
-        XCTAssertEqual(chars(KeyboardLayout.symbolRows[1]),
-                       ["_","\\","|","~","<",">","$","€","¥","•"])
-        XCTAssertEqual(KeyboardLayout.symbolRows[2],
-                       [.numbers, .spacer(0.25),
-                        .character("."), .character(","), .character("?"),
-                        .character("!"), .character("'"),
-                        .spacer(0.25), .backspace])
+    func testThreeRowSymbolPagesAreUnchanged() {
+        let numbers = KeyboardLayout.numberRows(style: .threeRow)
+        XCTAssertEqual(numbers.count, 3)
+        XCTAssertEqual(chars(numbers[0]), ["1","2","3","4","5","6","7","8","9","0"])
+        XCTAssertEqual(chars(numbers[1]), ["-","/",":",";","(",")","₽","&","@","\""])
+        XCTAssertEqual(numbers[2], punctuationRow)
+
+        let symbols = KeyboardLayout.symbolRows(style: .threeRow)
+        XCTAssertEqual(symbols.count, 3)
+        XCTAssertEqual(chars(symbols[0]), ["[","]","{","}","#","%","^","*","+","="])
+        XCTAssertEqual(chars(symbols[1]), ["_","\\","|","~","<",">","$","€","¥","•"])
+        XCTAssertEqual(symbols[2], punctuationRowSymbols)
+    }
+
+    func testFourRowSymbolPagesMatchTheApprovedProposal() {
+        let numbers = KeyboardLayout.numberRows(style: .fourRow)
+        XCTAssertEqual(numbers.count, 4)
+        XCTAssertEqual(chars(numbers[0]), ["1","2","3","4","5","6","7","8","9","0"])
+        XCTAssertEqual(chars(numbers[1]), ["-","/",":",";","(",")","₽","&","@","\""])
+        XCTAssertEqual(chars(numbers[2]), ["$","€","£","¥","￦","°","№","«","»","…"])
+        XCTAssertEqual(numbers[3], punctuationRow)
+
+        let symbols = KeyboardLayout.symbolRows(style: .fourRow)
+        XCTAssertEqual(symbols.count, 4)
+        XCTAssertEqual(chars(symbols[0]), ["[","]","{","}","#","%","^","*","+","="])
+        XCTAssertEqual(chars(symbols[1]), ["_","\\","|","~","<",">","•","–","—","§"])
+        XCTAssertEqual(chars(symbols[2]), ["≠","≈","‰","∞","¿","¡","’","„","“","”"])
+        XCTAssertEqual(symbols[3], punctuationRowSymbols)
+    }
+
+    func testLetterAndSymbolPagesHaveIdenticalRowCountsPerStyle() {
+        // The geometry-stability contract: switching ABC ↔ 123 never moves
+        // the keyboard content vertically, because every page of a style
+        // has the same number of rows inside the same total height.
+        for style in LayoutStyle.allCases {
+            let letters = KeyboardLayout.letterRows(style: style).count
+            XCTAssertEqual(KeyboardLayout.numberRows(style: style).count, letters)
+            XCTAssertEqual(KeyboardLayout.symbolRows(style: style).count, letters)
+        }
     }
 
     // MARK: - Long-press maps (exact, per style)
 
+    private let expectedShared: [String: [String]] = [
+        "ц": ["цӏ"],
+        "к": ["кӏ", "къ", "кь"],
+        "г": ["гӏ", "гъ", "гь"],
+        "х": ["хӏ", "хъ", "хь"],
+        "л": ["лъ", "лӏ"],
+        "ч": ["чӏ"],
+        "т": ["тӏ"],
+        "а": ["а\u{0301}"],
+        "е": ["ё", "е\u{0301}"],
+        "и": ["ы", "и\u{0301}"],
+        "о": ["о\u{0301}"],
+        "у": ["у\u{0301}"],
+        "э": ["э\u{0301}"],
+        "я": ["я\u{0301}"],
+        "ю": ["ю\u{0301}"],
+        "0": ["°"],
+        "₽": ["$", "€", "£", "¥", "￦"],
+        "#": ["№"],
+        ".": ["…"],
+        "%": ["‰", "∞"],
+        "=": ["≠", "≈"],
+        "-": ["•", "–", "—"],
+        "&": ["§"],
+        "?": ["¿"],
+        "!": ["¡"],
+        "'": ["’", "‘", "`"],
+        "\"": ["”", "“", "„", "»", "«"],
+    ]
+
     func testThreeRowCalloutsMatchTheSpecification() {
-        XCTAssertEqual(KeyboardLayout.callouts(style: .threeRow), [
-            "ц": ["цӏ"],
-            "к": ["кӏ", "къ", "кь"],
-            "е": ["ё"],
-            "г": ["гӏ", "гъ", "гь"],
-            "х": ["хӏ", "хъ", "хь"],
-            "л": ["лъ", "лӏ"],
-            "ч": ["чӏ"],
-            "и": ["ы"],
-            "т": ["тӏ"],
-        ])
+        XCTAssertEqual(KeyboardLayout.callouts(style: .threeRow),
+                       expectedShared.merging(["ӏ": ["ы"]]) { c, _ in c })
     }
 
-    func testFourRowCalloutsAddComponentAccessOnDigraphKeys() {
-        let four = KeyboardLayout.callouts(style: .fourRow)
-        // Same digraph callouts on the base letters as the 3-row style…
-        for (key, alternates) in KeyboardLayout.callouts(style: .threeRow) {
-            XCTAssertEqual(four[key], alternates)
+    func testFourRowCalloutsMatchTheSpecification() {
+        XCTAssertEqual(KeyboardLayout.callouts(style: .fourRow),
+                       expectedShared.merging([
+                           "гь": ["ь", "ъ"],
+                           "гъ": ["ъ"],
+                           "кӏ": ["ӏ"],
+                           "лъ": ["лӏ", "ы"],
+                       ]) { c, _ in c })
+        // The slash deliberately has no alternatives, in either style.
+        for style in LayoutStyle.allCases {
+            XCTAssertNil(KeyboardLayout.callouts(style: style)["/"])
         }
-        // …plus the component letters that lost their dedicated keys.
-        XCTAssertEqual(four["гь"], ["ь"])
-        XCTAssertEqual(four["гъ"], ["ъ"])
-        XCTAssertEqual(four["кӏ"], ["ӏ"])
-        XCTAssertEqual(four["лъ"], ["лӏ"])
-        XCTAssertEqual(four.count, KeyboardLayout.callouts(style: .threeRow).count + 4)
+    }
+
+    func testUppercaseCalloutVariantsDeriveMechanically() {
+        // The spec's uppercase rows (А: А́, Лъ: Лӏ Ы, Гь: Ь Ъ) come from
+        // the same lowercase entries: the bubble and the insertion both
+        // run the selected option through applyCase.
+        func shifted(_ options: [String]) -> [String] {
+            options.map { KeyboardLayout.applyCase($0, capsLock: false) }
+        }
+        let four = KeyboardLayout.callouts(style: .fourRow)
+        XCTAssertEqual(shifted(four["лъ"]!), ["Лӏ", "Ы"])
+        XCTAssertEqual(shifted(four["гь"]!), ["Ь", "Ъ"])
+        XCTAssertEqual(shifted(four["а"]!), ["А\u{0301}"])
+        XCTAssertEqual(shifted(KeyboardLayout.callouts(style: .threeRow)["ӏ"]!), ["Ы"])
     }
 
     // MARK: - Reachability
@@ -165,6 +230,31 @@ final class LayoutStyleTests: XCTestCase {
         }
     }
 
+    func testEverySymbolIsReachableInBothStyles() {
+        // Union of visible symbol keys and their long-press alternates.
+        func reachable(style: LayoutStyle) -> Set<String> {
+            var set = Set<String>()
+            for rows in [KeyboardLayout.numberRows(style: style),
+                         KeyboardLayout.symbolRows(style: style)] {
+                for row in rows { set.formUnion(chars(row)) }
+            }
+            set.formUnion(KeyboardLayout.callouts(style: style).values.flatMap { $0 })
+            return set
+        }
+        let inventory: Set<String> = [
+            "$", "€", "£", "¥", "￦", "°", "№", "«", "»", "…",
+            "•", "–", "—", "§", "≠", "≈", "‰", "∞", "¿", "¡",
+            "’", "‘", "`", "„", "“", "”", "₽",
+        ]
+        for style in LayoutStyle.allCases {
+            let set = reachable(style: style)
+            for symbol in inventory {
+                XCTAssertTrue(set.contains(symbol),
+                              "\(symbol) must stay reachable in \(style)")
+            }
+        }
+    }
+
     // MARK: - Engine neutrality
 
     func testEngineTailSourceIsTheStyleBlindUnion() {
@@ -182,11 +272,13 @@ final class LayoutStyleTests: XCTestCase {
 
     func testKeyNamesMatchTheSpecification() {
         XCTAssertEqual(KeyboardLayout.label(for: .space, shifted: false), "Гьоркьобакӏ")
-        XCTAssertEqual(KeyboardLayout.label(for: .return, shifted: false), "Лъей")
+        XCTAssertEqual(KeyboardLayout.label(for: .return, shifted: false), "",
+                       "empty label — the view draws the ⏎ symbol")
         XCTAssertEqual(KeyboardLayout.label(for: .letters, shifted: false), "аиу")
         XCTAssertEqual(KeyboardLayout.label(for: .letters, shifted: true), "АИУ")
 
-        XCTAssertEqual(KeyboardLayout.returnLabel(for: .default), "Лъей")
+        XCTAssertEqual(KeyboardLayout.returnLabel(for: .default), "",
+                       "plain return shows the ⏎ symbol, not a word")
         XCTAssertEqual(KeyboardLayout.returnLabel(for: .go), "Рагьизе")
         XCTAssertEqual(KeyboardLayout.returnLabel(for: .send), "Битӏизе")
         XCTAssertEqual(KeyboardLayout.returnLabel(for: .done), "Лъугӏана")
@@ -202,9 +294,27 @@ final class LayoutStyleTests: XCTestCase {
 
     func testGeometryStaysFrozen() {
         XCTAssertEqual(KeyboardLayout.metrics(for: .threeRow),
-                       KeyboardLayout.Metrics(totalHeight: 250, keyHeight: 43, rowSpacing: 11))
+                       KeyboardLayout.Metrics(totalHeight: 250, keyHeight: 43, rowSpacing: 11,
+                                              emojiRows: 5, emojiCellHeight: 33))
         XCTAssertEqual(KeyboardLayout.metrics(for: .fourRow),
-                       KeyboardLayout.Metrics(totalHeight: 304, keyHeight: 43, rowSpacing: 11))
+                       KeyboardLayout.Metrics(totalHeight: 304, keyHeight: 43, rowSpacing: 11,
+                                              emojiRows: 6, emojiCellHeight: 36))
+    }
+
+    func testEmojiGridFillsEachStyleWithoutOverflow() {
+        // Emoji page vertical budget: 8 top pad + ~16 title + 4 pad +
+        // grid + 36 category bar ≤ totalHeight, with the leftover slack
+        // small and comparable across styles (no floating grid).
+        for style in LayoutStyle.allCases {
+            let m = KeyboardLayout.metrics(for: style)
+            let grid = CGFloat(m.emojiRows) * m.emojiCellHeight
+                     + CGFloat(m.emojiRows - 1) * 2
+            let slack = m.totalHeight - (8 + 16 + 4 + grid + 36)
+            XCTAssertGreaterThanOrEqual(slack, 0,
+                "emoji grid must not overflow the \(style) keyboard")
+            XCTAssertLessThanOrEqual(slack, 20,
+                "emoji grid must fill the \(style) keyboard, not float")
+        }
     }
 
     func testLayoutStyleRawValuesAreStable() {

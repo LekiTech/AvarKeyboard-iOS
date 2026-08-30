@@ -759,8 +759,8 @@ final class KeyboardModel: ObservableObject {
         let main: [[KeyCap]]
         switch page {
         case .letters: main = KeyboardLayout.letterRows(style: layoutStyle)
-        case .numbers: main = KeyboardLayout.numberRows
-        case .symbols: main = KeyboardLayout.symbolRows
+        case .numbers: main = KeyboardLayout.numberRows(style: layoutStyle)
+        case .symbols: main = KeyboardLayout.symbolRows(style: layoutStyle)
         case .emoji:   return []
         }
         return main + [bottomRow(needsGlobe: needsGlobe)]
