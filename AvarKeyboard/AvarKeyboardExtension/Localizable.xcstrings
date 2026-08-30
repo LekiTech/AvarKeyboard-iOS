@@ -206,6 +206,40 @@
         }
       }
     },
+    "four rows — digraphs on top" : {
+      "comment" : "Settings subtitle under «4 мухъ»",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "four rows — digraphs on top"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "четыре ряда — диграфы сверху"
+          }
+        }
+      }
+    },
+    "layout" : {
+      "comment" : "Section label explanation after «Раскладка»",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "layout"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "раскладка"
+          }
+        }
+      }
+    },
     "learning" : {
       "comment" : "Section label explanation after «Лъазаби»",
       "localizations" : {
@@ -321,6 +355,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "тема"
+          }
+        }
+      }
+    },
+    "three letter rows" : {
+      "comment" : "Settings subtitle under «3 мухъ»",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "three letter rows"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "три ряда букв"
           }
         }
       }

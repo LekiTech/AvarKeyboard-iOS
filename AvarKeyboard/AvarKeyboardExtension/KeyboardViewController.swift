@@ -20,6 +20,8 @@ class KeyboardViewController: UIInputViewController {
     private var model = KeyboardModel()
     private var hideKeyboardNameWork: DispatchWorkItem?
     private var themeCancellable: AnyCancellable?
+    private var layoutStyleCancellable: AnyCancellable?
+    private var heightConstraint: NSLayoutConstraint?
     #if DEBUG
     /// Phase 1B: samples memory around the page transitions that matter
     /// (letters ⇄ emoji). Compiled out of Release together with MemoryProbe.
@@ -136,9 +138,22 @@ class KeyboardViewController: UIInputViewController {
             hc.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
 
-        let h = view.heightAnchor.constraint(equalToConstant: 250)
+        // Height follows the layout style: the 3-row grid keeps the
+        // original 250, the 4-row grid grows so its extra digraph row
+        // never compresses the familiar keys. @Published emits the
+        // persisted style on subscription, so the saved choice applies
+        // right here on open.
+        let h = view.heightAnchor.constraint(
+            equalToConstant: KeyboardLayout.metrics(for: model.layoutStyle).totalHeight)
         h.priority = UILayoutPriority(999)
         h.isActive = true
+        heightConstraint = h
+        layoutStyleCancellable = model.$layoutStyle
+            .removeDuplicates()
+            .sink { [weak self] style in
+                self?.heightConstraint?.constant =
+                    KeyboardLayout.metrics(for: style).totalHeight
+            }
     }
 
     override func viewSafeAreaInsetsDidChange() {

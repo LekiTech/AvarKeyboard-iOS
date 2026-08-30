@@ -29,6 +29,19 @@ final class KeyboardModel: ObservableObject {
     @Published var showsKeyboardName: Bool = false
     /// The in-keyboard settings panel (opened by the gear key) is visible.
     @Published var showsSettings: Bool = false
+    /// Which letter grid is active (three rows, or four with the digraph
+    /// row on top); user-selectable in the settings panel, persisted in
+    /// the extension's own UserDefaults. The suggestion engine never
+    /// reads it — both styles insert identical text.
+    @Published var layoutStyle: LayoutStyle =
+        LayoutStyle(rawValue: UserDefaults.standard.string(forKey: KeyboardModel.layoutStyleKey) ?? "") ?? .threeRow
+
+    private static let layoutStyleKey = "layoutStyle"
+
+    func setLayoutStyle(_ style: LayoutStyle) {
+        layoutStyle = style
+        UserDefaults.standard.set(style.rawValue, forKey: Self.layoutStyleKey)
+    }
 
     /// User-adjustable behavior (settings panel, Phase 2); defaults keep the
     /// pre-settings behavior.
@@ -742,7 +755,7 @@ final class KeyboardModel: ObservableObject {
     func rows(needsGlobe: Bool) -> [[KeyCap]] {
         let main: [[KeyCap]]
         switch page {
-        case .letters: main = KeyboardLayout.letterRows
+        case .letters: main = KeyboardLayout.letterRows(style: layoutStyle)
         case .numbers: main = KeyboardLayout.numberRows
         case .symbols: main = KeyboardLayout.symbolRows
         case .emoji:   return []

@@ -181,6 +181,15 @@ struct SettingsPanelView: View {
             // localized; the small explanatory subtitles come from the
             // extension's string catalog and follow the user's system
             // language (en fallback).
+            sectionLabel("Раскладка — " + String(localized: "layout"))
+            group {
+                layoutStyleRow(.threeRow, title: "3 мухъ",
+                               subtitle: String(localized: "three letter rows"))
+                divider
+                layoutStyleRow(.fourRow, title: "4 мухъ",
+                               subtitle: String(localized: "four rows — digraphs on top"))
+            }
+
             sectionLabel("Малълъиял — " + String(localized: "suggestions"))
             group {
                 toggleRow(title: "РагӀабазул малълъиял",
@@ -507,6 +516,14 @@ struct SettingsPanelView: View {
         .padding(.horizontal, 13)
         .padding(.vertical, 8)
         .frame(minHeight: 46)
+    }
+
+    private func layoutStyleRow(_ style: LayoutStyle,
+                                title: String, subtitle: String) -> some View {
+        radioRow(title: title, subtitle: subtitle,
+                 selected: model.layoutStyle == style) {
+            model.setLayoutStyle(style)
+        }
     }
 
     private func radioRow(title: String, subtitle: String, selected: Bool,

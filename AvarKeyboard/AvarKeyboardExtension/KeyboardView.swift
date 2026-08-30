@@ -78,6 +78,12 @@ struct KeyboardView: View {
 
     private let calloutOptionWidth: CGFloat = 44
 
+    /// Per-style vertical geometry; the view re-renders when the style
+    /// changes because `model` is observed.
+    private var metrics: KeyboardLayout.Metrics {
+        KeyboardLayout.metrics(for: model.layoutStyle)
+    }
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             if model.page == .emoji {
@@ -86,10 +92,13 @@ struct KeyboardView: View {
                 VStack(spacing: 8) {
                     suggestionBar
                     GeometryReader { geo in
-                        // Vertical budget: 36 bar + 8 gap + 4×43 keys + 3×11
-                        // row gaps = 249 within the fixed 250 total height.
-                        // Row spacing must match RowView.rowSpacing.
-                        VStack(spacing: 11) {
+                        // Vertical budget: 36 bar + 8 gap + N×keyHeight +
+                        // (N-1)×rowSpacing = metrics.totalHeight - 1, with
+                        // every number from KeyboardLayout.metrics(for:) —
+                        // .threeRow keeps the original 250/43/11 untouched,
+                        // .fourRow keeps the SAME key size and pays for its
+                        // extra row in total height.
+                        VStack(spacing: metrics.rowSpacing) {
                             let allRows = model.rows(needsGlobe: model.needsGlobe)
                             ForEach(Array(allRows.enumerated()), id: \.offset) { i, row in
                                 rowView(row: row, totalWidth: geo.size.width - 12,
@@ -104,7 +113,8 @@ struct KeyboardView: View {
             // Key preview bubble (only when no callout)
             if !isShowingCallout, let cap = pressedCap, case .character = cap {
                 KeyPreviewBubble(
-                    label: KeyboardLayout.label(for: cap, shifted: model.isShifted),
+                    label: KeyboardLayout.label(for: cap, shifted: model.isShifted,
+                                                capsLock: model.isCapsLock),
                     frame: pressedFrame
                 )
                 .allowsHitTesting(false)
@@ -132,7 +142,7 @@ struct KeyboardView: View {
             }
         }
         .animation(.easeOut(duration: 0.28), value: model.showsSettings)
-        .frame(height: 250, alignment: .top)
+        .frame(height: metrics.totalHeight, alignment: .top)
         .coordinateSpace(name: "keyboard")
         .ignoresSafeArea()
     }
@@ -551,7 +561,9 @@ struct KeyboardView: View {
                 calloutOptions = []
             },
             onCursorMove: { steps in onCursorMove?(steps) },
-            onCursorLineMove: { lines in onCursorLineMove?(lines) }
+            onCursorLineMove: { lines in onCursorLineMove?(lines) },
+            keyHeight: metrics.keyHeight,
+            rowSpacing: metrics.rowSpacing
         )
     }
 }
@@ -692,10 +704,13 @@ private struct RowView: View {
     @State private var spaceLastY: CGFloat = 0
 
     private let spacing: CGFloat = 6
-    private let keyHeight: CGFloat = 43
-    /// Must mirror the key-grid `VStack` spacing in `KeyboardView.body` so
-    /// the expanded hit zones tile the inter-row gaps exactly.
-    private let rowSpacing: CGFloat = 11
+    /// Style-dependent vertical geometry, injected from
+    /// `KeyboardLayout.metrics(for:)` by the parent. `rowSpacing` must
+    /// mirror the key-grid `VStack` spacing so the expanded hit zones
+    /// tile the inter-row gaps exactly — both come from the same
+    /// metrics value, so they cannot drift.
+    let keyHeight: CGFloat
+    let rowSpacing: CGFloat
     /// Row x-origin in keyboard space; matches `.padding(.horizontal, 6)` on the VStack.
     private let rowLeadingX: CGFloat = 6
 
@@ -1101,7 +1116,8 @@ private struct KeyButton: View {
                 .foregroundColor(Color(UIColor.label))
 
         default:
-            let label = KeyboardLayout.label(for: cap, shifted: model.isShifted)
+            let label = KeyboardLayout.label(for: cap, shifted: model.isShifted,
+                                             capsLock: model.isCapsLock)
             Text(label)
                 .font(KeyboardLayout.keyLabelFont(for: cap, label: label))
                 .foregroundColor(Color(UIColor.label))

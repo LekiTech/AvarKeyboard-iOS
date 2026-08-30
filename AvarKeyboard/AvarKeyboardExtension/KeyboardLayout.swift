@@ -33,6 +33,15 @@ enum KeyboardPage {
     case letters, numbers, symbols, emoji
 }
 
+/// Which letter grid the user types on — user-selectable in the settings
+/// panel. `.threeRow` is the original layout. `.fourRow` adds ONE digraph
+/// row ABOVE it and changes nothing else: the three existing rows keep
+/// every key exactly in place, so muscle memory transfers and switching
+/// feels like the same keyboard with an extra row.
+enum LayoutStyle: String, CaseIterable {
+    case threeRow, fourRow
+}
+
 enum KeyboardLayout {
 
     // MARK: - Letter rows (fixed Avar layout)
@@ -46,6 +55,46 @@ enum KeyboardLayout {
             + [.backspace],
     ]
     // ↑↑↑  -----------------------------------  ↑↑↑
+
+    /// The extra top row of the `.fourRow` style: every Avar digraph that
+    /// already exists as a long-press alternate, now also one tap away.
+    /// Palochka digraphs use the visible Ӏ (U+04C0) like the callouts, so
+    /// a digraph key inserts exactly the same text as its callout twin —
+    /// the engine cannot tell them apart. Callouts stay active in both
+    /// styles; this row never replaces them.
+    static let digraphRow: [KeyCap] =
+        ["гъ","хъ","къ","кӀ","тӀ","цӀ","чӀ","хӀ","гӀ","кь","хь"].map { .character($0) }  // 11 keys
+
+    /// Letter rows for the chosen style. `.threeRow` returns `letterRows`
+    /// unchanged; `.fourRow` prepends the digraph row and touches nothing
+    /// else.
+    static func letterRows(style: LayoutStyle) -> [[KeyCap]] {
+        switch style {
+        case .threeRow: return letterRows
+        case .fourRow:  return [digraphRow] + letterRows
+        }
+    }
+
+    // MARK: - Vertical geometry per style
+
+    /// The vertical numbers the keyboard is built from. `.threeRow` is the
+    /// original hand-tuned geometry and must stay frozen. `.fourRow` keeps
+    /// the SAME key height and row gap — the familiar rows are not
+    /// compressed at all — and pays for its extra row purely in keyboard
+    /// height: 36 bar + 8 gap + 5×43 keys + 4×11 gaps + the same 1 pt of
+    /// slack the original budget carries = 304.
+    struct Metrics: Equatable {
+        let totalHeight: CGFloat
+        let keyHeight: CGFloat
+        let rowSpacing: CGFloat
+    }
+
+    static func metrics(for style: LayoutStyle) -> Metrics {
+        switch style {
+        case .threeRow: return Metrics(totalHeight: 250, keyHeight: 43, rowSpacing: 11)
+        case .fourRow:  return Metrics(totalHeight: 304, keyHeight: 43, rowSpacing: 11)
+        }
+    }
 
     // MARK: - Number page ("123") — standard iOS set
     static let numberRows: [[KeyCap]] = [
@@ -93,9 +142,12 @@ enum KeyboardLayout {
 
     // MARK: - Key labels
 
-    static func label(for cap: KeyCap, shifted: Bool) -> String {
+    static func label(for cap: KeyCap, shifted: Bool, capsLock: Bool = true) -> String {
         switch cap {
-        case .character(let s): return shifted ? s.uppercased() : s
+        // applyCase keeps digraph keys honest under shift-once: «гъ»
+        // previews as «Гъ», not «ГЪ» — exactly what a tap will insert.
+        // Single letters are unaffected (first-letter == whole label).
+        case .character(let s): return shifted ? applyCase(s, capsLock: capsLock) : s
         case .shift:            return "⇧"
         case .backspace:        return "⌫"
         case .numbers:          return "123"
@@ -172,6 +224,11 @@ enum KeyboardLayout {
     /// have no case and keep the base size.
     static func fontSize(for cap: KeyCap, label: String) -> CGFloat {
         let base = fontSize(for: cap)
+        // Digraph keys draw two glyphs in a single-key width; the lowercase
+        // bump would overflow the cap, so they step down instead.
+        if case .character = cap, label.count > 1 {
+            return base * 0.8
+        }
         if case .character = cap, label != label.uppercased() {
             return base * 1.2
         }
