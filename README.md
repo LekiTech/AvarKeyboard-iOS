@@ -27,9 +27,10 @@ of a friendly eagle in a papakha — developed by [LekiTech](https://github.com/
 ## The Keyboard
 
 - Palochka (Ӏ) and digraphs are one long press away
-- Two layout styles, switchable in the keyboard's settings: the classic
-  3-row grid, or a 4-row grid that adds a dedicated digraph row on top
-  while keeping every existing key exactly in place
+- Two layout styles, switchable in the keyboard's settings: a compact
+  3-row grid (ъ and ӏ as direct keys, digraphs on long-press), or a
+  4-row grid with a dedicated digraph row on top plus лъ and гь keys
+  (their components ь, ъ, ӏ stay one long-press away)
 - Word suggestions from an offline dictionary, plus the words and word pairs
   it learns from your own typing — including next-word suggestions. Learning
   works entirely on-device and does not depend on the built-in dictionary

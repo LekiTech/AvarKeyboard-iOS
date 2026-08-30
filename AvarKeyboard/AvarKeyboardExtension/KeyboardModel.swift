@@ -537,6 +537,9 @@ final class KeyboardModel: ObservableObject {
 
         switch cap {
 
+        case .spacer:
+            break
+
         case .character(let s):
             autoSpacedAcceptedWord = nil
             if Self.wordTerminators.contains(s) { learnCompletedWord(proxy: proxy) }

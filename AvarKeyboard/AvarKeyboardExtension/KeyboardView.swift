@@ -832,7 +832,8 @@ private struct RowView: View {
 
         // Long-press for character keys that have callout options
         if case .character(let s) = key.cap,
-           let extras = KeyboardLayout.callouts[s.lowercased()], !extras.isEmpty {
+           let extras = KeyboardLayout.callouts(style: model.layoutStyle)[s.lowercased()],
+           !extras.isEmpty {
             let base = s.lowercased()
             let opts = [base] + extras.filter { $0.lowercased() != base }
             let frame = key.frame
@@ -1024,6 +1025,14 @@ private struct KeyButton: View {
     var isPressed: Bool = false
 
     var body: some View {
+        if case .spacer = cap {
+            Color.clear
+        } else {
+            keyCap
+        }
+    }
+
+    private var keyCap: some View {
         keyLabel
             // While a character key is pressed its bubble shows the letter,
             // so the key's own label is hidden like on the native keyboard

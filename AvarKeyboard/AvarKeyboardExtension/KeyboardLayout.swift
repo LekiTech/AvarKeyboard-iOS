@@ -27,6 +27,9 @@ enum KeyCap: Equatable {
     case settings   // opens the in-keyboard settings panel
     case space
     case `return`
+    /// Invisible, non-interactive gap of the given width weight —
+    /// used by the symbol rows to center the punctuation cluster.
+    case spacer(CGFloat)
 }
 
 enum KeyboardPage {
@@ -44,34 +47,35 @@ enum LayoutStyle: String, CaseIterable {
 
 enum KeyboardLayout {
 
-    // MARK: - Letter rows (fixed Avar layout)
+    // MARK: - Letter rows (fixed Avar layouts, defined independently)
+    //
+    // The two styles are separate specifications — neither derives from
+    // the other. Shift layers come from applyCase (first letter only), so
+    // «кӏ» previews and inserts «Кӏ», «гь» → «Гь», exactly per the spec.
     //
     // ↓↓↓  ADD OR REORDER KEYS HERE ONLY  ↓↓↓
-    static let letterRows: [[KeyCap]] = [
-        ["й","ц","у","к","е","н","г","ш","щ","з","х"].map { .character($0) },  // 11 keys
-        ["ъ","Ӏ","в","а","п","р","о","л","д","ж","э"].map { .character($0) },  // 11 keys
+    private static let threeRowRows: [[KeyCap]] = [
+        ["й","ц","у","к","е","н","г","ш","щ","з","х","ъ"].map { .character($0) },  // 12 keys
+        ["ф","ӏ","в","а","п","р","о","л","д","ж","э"].map { .character($0) },      // 11 keys
         [.shift]
             + ["я","ч","с","м","и","т","ь","б","ю"].map { KeyCap.character($0) }
             + [.backspace],
     ]
+
+    private static let fourRowRows: [[KeyCap]] = [
+        ["гъ","хъ","къ","кӏ","тӏ","цӏ","чӏ","хӏ","гӏ","кь","хь"].map { .character($0) },  // 11 keys
+        ["й","ц","у","к","е","н","г","ш","щ","з","х"].map { .character($0) },              // 11 keys
+        ["ф","лъ","в","а","п","р","о","л","д","ж","э"].map { .character($0) },             // 11 keys
+        [.shift]
+            + ["я","ч","с","м","и","т","гь","б","ю"].map { KeyCap.character($0) }
+            + [.backspace],
+    ]
     // ↑↑↑  -----------------------------------  ↑↑↑
 
-    /// The extra top row of the `.fourRow` style: every Avar digraph that
-    /// already exists as a long-press alternate, now also one tap away.
-    /// Palochka digraphs use the visible Ӏ (U+04C0) like the callouts, so
-    /// a digraph key inserts exactly the same text as its callout twin —
-    /// the engine cannot tell them apart. Callouts stay active in both
-    /// styles; this row never replaces them.
-    static let digraphRow: [KeyCap] =
-        ["гъ","хъ","къ","кӀ","тӀ","цӀ","чӀ","хӀ","гӀ","кь","хь"].map { .character($0) }  // 11 keys
-
-    /// Letter rows for the chosen style. `.threeRow` returns `letterRows`
-    /// unchanged; `.fourRow` prepends the digraph row and touches nothing
-    /// else.
     static func letterRows(style: LayoutStyle) -> [[KeyCap]] {
         switch style {
-        case .threeRow: return letterRows
-        case .fourRow:  return [digraphRow] + letterRows
+        case .threeRow: return threeRowRows
+        case .fourRow:  return fourRowRows
         }
     }
 
@@ -96,34 +100,62 @@ enum KeyboardLayout {
         }
     }
 
-    // MARK: - Number page ("123") — standard iOS set
+    // MARK: - Number page ("123")
     static let numberRows: [[KeyCap]] = [
         ["1","2","3","4","5","6","7","8","9","0"].map { .character($0) },
         ["-","/",":",";","(",")","₽","&","@","\""].map { .character($0) },
-        [.symbols] + [".",",","?","!","'"].map { KeyCap.character($0) } + [.backspace],
+        [.symbols, .spacer(0.25)]
+            + [".",",","?","!","'"].map { KeyCap.character($0) }
+            + [.spacer(0.25), .backspace],
     ]
 
-    // MARK: - Symbol page ("#+=") — standard iOS set
+    // MARK: - Symbol page ("#+=")
     static let symbolRows: [[KeyCap]] = [
         ["[","]","{","}","#","%","^","*","+","="].map { .character($0) },
-        ["_","\\","|","~","<",">","€","£","¥","•"].map { .character($0) },
-        [.numbers] + [".",",","?","!","'"].map { KeyCap.character($0) } + [.backspace],
+        ["_","\\","|","~","<",">","$","€","¥","•"].map { .character($0) },
+        [.numbers, .spacer(0.25)]
+            + [".",",","?","!","'"].map { KeyCap.character($0) }
+            + [.spacer(0.25), .backspace],
     ]
 
-    // MARK: - Long-press callouts (Step 3)
-    // Alternates are inserted as a whole string (e.g. "цӀ" = ц + palochka U+04C0).
-    static let callouts: [String: [String]] = [
-        "ц": ["цӀ"],
-        "к": ["кӀ", "къ", "кь"],
+    // MARK: - Long-press callouts, per style
+    // Alternates are inserted as a whole string. The 3-row style carries
+    // the full digraph set (no digraph keys exist); the 4-row style keeps
+    // the same digraph callouts on the base letters AND adds component
+    // access on the digraph keys themselves, because standalone ь, ъ and ӏ
+    // have no dedicated keys there (гь→ь, гъ→ъ, кӏ→ӏ, лъ→лӏ). These maps
+    // reproduce the ava-3-rows / ava-4-rows long-press behavior natively.
+    private static let sharedCallouts: [String: [String]] = [
+        "ц": ["цӏ"],
+        "к": ["кӏ", "къ", "кь"],
         "е": ["ё"],
-        "г": ["гӀ", "гъ", "гь"],
-        "х": ["хӀ", "хъ", "хь"],
-        "п": ["ф"],
-        "л": ["лъ", "лӀ"],
-        "ч": ["чӀ"],
+        "г": ["гӏ", "гъ", "гь"],
+        "х": ["хӏ", "хъ", "хь"],
+        "л": ["лъ", "лӏ"],
+        "ч": ["чӏ"],
         "и": ["ы"],
-        "т": ["тӀ"]
+        "т": ["тӏ"]
     ]
+
+    static func callouts(style: LayoutStyle) -> [String: [String]] {
+        switch style {
+        case .threeRow:
+            return sharedCallouts
+        case .fourRow:
+            return sharedCallouts.merging([
+                "гь": ["ь"],
+                "гъ": ["ъ"],
+                "кӏ": ["ӏ"],
+                "лъ": ["лӏ"],
+            ]) { current, _ in current }
+        }
+    }
+
+    /// Union of both styles' maps — the single style-blind source the
+    /// engine derives its digraph tails from (Normalization, LearnedWords).
+    /// Never used for rendering.
+    static let callouts: [String: [String]] =
+        callouts(style: .fourRow)
 
     // MARK: - Case helpers
 
@@ -152,12 +184,13 @@ enum KeyboardLayout {
         case .backspace:        return "⌫"
         case .numbers:          return "123"
         case .symbols:          return "#+="
-        case .letters:          return "АБВ"
+        case .letters:          return shifted ? "АИУ" : "аиу"
         case .globe:            return "🌐"
         case .emoji:            return "😀"
         case .settings:         return ""    // gear icon, rendered by KeyButton
-        case .space:            return "Гьоркьоб бакӀ"
-        case .return:           return "Ввод"
+        case .spacer:           return ""
+        case .space:            return "Гьоркьобакӏ"
+        case .return:           return "Лъей"
         }
     }
 
@@ -172,25 +205,26 @@ enum KeyboardLayout {
              .numbers, .symbols, .letters:  return 1.2
         case .return:                       return 1.8
         case .space:                        return 4.5
+        case .spacer(let w):                return w
         }
     }
 
     // MARK: - Return key
 
-    /// Action label for the return key, in Avar. `.search` is empty on
-    /// purpose: it renders as the universal magnifying-glass icon — the
-    /// familiar convention on modern keyboards. An empty label means
-    /// "show an icon".
+    /// Action label for the return key, in Avar, per the layout spec's
+    /// key-name table. An empty label means "show an icon".
     static func returnLabel(for type: UIReturnKeyType) -> String {
         switch type {
-        case .go:               return "Ине"
-        case .send:             return "БитӀизе"
-        case .done:             return "ЛъугӀана"
+        case .default:          return "Лъей"
+        case .go:               return "Рагьизе"
+        case .send:             return "Битӏизе"
+        case .done:             return "Лъугӏана"
         case .next:             return "Хадусеб"
-        case .`continue`:       return "Цебе бачине"
-        case .join:             return "Лъугьине"
+        case .`continue`:       return "Цебехун"
+        case .join:             return "Цолъизе"
         case .route:            return "Нух"
-        case .emergencyCall:    return "Кумекалъе ахӀи"
+        case .search:           return "Хъирщи"
+        case .emergencyCall:    return "SOS"
         default:                return ""
         }
     }
@@ -214,6 +248,7 @@ enum KeyboardLayout {
         case .space:                       return 13
         case .return:                      return 13
         case .numbers, .symbols, .letters: return 18
+        case .spacer:                      return 0
         }
     }
 

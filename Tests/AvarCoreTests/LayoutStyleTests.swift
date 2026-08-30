@@ -2,11 +2,12 @@
 //  LayoutStyleTests.swift
 //  AvarCoreTests
 //
-//  The two-layout contract: `.fourRow` is the `.threeRow` layout with one
-//  digraph row prepended and NOTHING else changed — muscle memory must
-//  transfer, every character stays reachable, and the engine cannot tell
-//  the styles apart because digraph keys insert exactly the strings the
-//  callouts already insert.
+//  Characterization of the two Avar layouts against their specification.
+//  The 3-row and 4-row grids are defined independently — these tests pin
+//  every row, every callout map, the shift layers, the symbol pages, and
+//  the key names EXACTLY, so the layouts cannot drift without a failing
+//  test. The engine stays style-blind: its digraph-tail source is the
+//  union callout map, asserted unchanged here.
 //
 
 import XCTest
@@ -18,44 +19,124 @@ final class LayoutStyleTests: XCTestCase {
         row.compactMap { if case .character(let s) = $0 { return s } else { return nil } }
     }
 
-    // MARK: - Muscle memory
+    // MARK: - Default layers (exact)
 
-    func testFourRowPreservesTheThreeRowLayoutExactly() {
-        let three = KeyboardLayout.letterRows(style: .threeRow)
-        let four = KeyboardLayout.letterRows(style: .fourRow)
-        XCTAssertEqual(three, KeyboardLayout.letterRows,
-                       ".threeRow must be the original letterRows, untouched")
-        XCTAssertEqual(four.count, three.count + 1)
-        XCTAssertEqual(Array(four.dropFirst()), three,
-                       "every existing key must keep its exact position")
+    func testThreeRowLayoutMatchesTheSpecificationExactly() {
+        let rows = KeyboardLayout.letterRows(style: .threeRow)
+        XCTAssertEqual(rows.count, 3)
+        XCTAssertEqual(chars(rows[0]), ["й","ц","у","к","е","н","г","ш","щ","з","х","ъ"])
+        XCTAssertEqual(chars(rows[1]), ["ф","ӏ","в","а","п","р","о","л","д","ж","э"])
+        XCTAssertEqual(chars(rows[2]), ["я","ч","с","м","и","т","ь","б","ю"])
+        XCTAssertEqual(rows[2].first, .shift)
+        XCTAssertEqual(rows[2].last, .backspace)
+        // The standalone palochka key is the lowercase form ӏ (U+04CF).
+        XCTAssertEqual(chars(rows[1])[1].unicodeScalars.first?.value, 0x4CF)
     }
 
-    func testDigraphRowContentAndOrder() {
-        XCTAssertEqual(chars(KeyboardLayout.digraphRow),
-                       ["гъ", "хъ", "къ", "кӀ", "тӀ", "цӀ", "чӀ", "хӀ", "гӀ", "кь", "хь"])
-        XCTAssertEqual(KeyboardLayout.digraphRow.count, 11,
-                       "same key count as the other letter rows")
-        for key in chars(KeyboardLayout.digraphRow) {
-            XCTAssertEqual(key.count, 2)
-            for scalar in key.unicodeScalars where scalar.value == 0x4CF {
-                XCTFail("digraph keys must use the visible Ӏ (U+04C0), found ӏ in \(key)")
+    func testFourRowLayoutMatchesTheSpecificationExactly() {
+        let rows = KeyboardLayout.letterRows(style: .fourRow)
+        XCTAssertEqual(rows.count, 4)
+        XCTAssertEqual(chars(rows[0]), ["гъ","хъ","къ","кӏ","тӏ","цӏ","чӏ","хӏ","гӏ","кь","хь"])
+        XCTAssertEqual(chars(rows[1]), ["й","ц","у","к","е","н","г","ш","щ","з","х"])
+        XCTAssertEqual(chars(rows[2]), ["ф","лъ","в","а","п","р","о","л","д","ж","э"])
+        XCTAssertEqual(chars(rows[3]), ["я","ч","с","м","и","т","гь","б","ю"])
+        XCTAssertEqual(rows[3].first, .shift)
+        XCTAssertEqual(rows[3].last, .backspace)
+        // Digraph palochkas are the lowercase form ӏ (U+04CF), per spec.
+        for key in chars(rows[0]) where key.contains("ӏ") == false && key.contains("Ӏ") {
+            XCTFail("digraph \(key) must use lowercase ӏ per the layout spec")
+        }
+    }
+
+    // MARK: - Shift layers (exact, via applyCase)
+
+    func testShiftLayersMatchTheSpecification() {
+        // The spec's SHIFT grids capitalize only the first letter of each
+        // key: гь → Гь, кӏ → Кӏ, лъ → Лъ — applyCase(capsLock: false) is
+        // the single function that produces both the label and the
+        // inserted text, so asserting it covers both.
+        func shifted(_ row: [KeyCap]) -> [String] {
+            chars(row).map { KeyboardLayout.applyCase($0, capsLock: false) }
+        }
+        let three = KeyboardLayout.letterRows(style: .threeRow)
+        XCTAssertEqual(shifted(three[0]), ["Й","Ц","У","К","Е","Н","Г","Ш","Щ","З","Х","Ъ"])
+        XCTAssertEqual(shifted(three[1]), ["Ф","Ӏ","В","А","П","Р","О","Л","Д","Ж","Э"])
+        XCTAssertEqual(shifted(three[2]), ["Я","Ч","С","М","И","Т","Ь","Б","Ю"])
+
+        let four = KeyboardLayout.letterRows(style: .fourRow)
+        XCTAssertEqual(shifted(four[0]), ["Гъ","Хъ","Къ","Кӏ","Тӏ","Цӏ","Чӏ","Хӏ","Гӏ","Кь","Хь"])
+        XCTAssertEqual(shifted(four[2]), ["Ф","Лъ","В","А","П","Р","О","Л","Д","Ж","Э"])
+        XCTAssertEqual(shifted(four[3]), ["Я","Ч","С","М","И","Т","Гь","Б","Ю"])
+    }
+
+    func testEveryVisibleKeyInsertsExactlyWhatItShows() {
+        // Unshifted label == inserted text == the key's own string; the
+        // shifted label and shifted insertion both come from applyCase.
+        for style in LayoutStyle.allCases {
+            for row in KeyboardLayout.letterRows(style: style) {
+                for key in chars(row) {
+                    XCTAssertEqual(
+                        KeyboardLayout.label(for: .character(key), shifted: false), key)
+                    XCTAssertEqual(
+                        KeyboardLayout.label(for: .character(key), shifted: true, capsLock: false),
+                        KeyboardLayout.applyCase(key, capsLock: false))
+                }
             }
         }
     }
 
-    // MARK: - Engine neutrality
+    // MARK: - Symbol layers (exact)
 
-    func testEveryDigraphKeyIsAlsoACalloutAlternate() {
-        // A digraph key must insert exactly what its callout twin inserts,
-        // so the engine (normalization, digraph tails, learning) cannot
-        // tell the layout styles apart.
-        let alternates = Set(KeyboardLayout.callouts.values.flatMap { $0 })
-        for key in chars(KeyboardLayout.digraphRow) {
-            XCTAssertTrue(alternates.contains(key),
-                          "\(key) has no callout twin — it would be new text")
+    func testSymbolPagesMatchTheSpecification() {
+        XCTAssertEqual(chars(KeyboardLayout.numberRows[0]),
+                       ["1","2","3","4","5","6","7","8","9","0"])
+        XCTAssertEqual(chars(KeyboardLayout.numberRows[1]),
+                       ["-","/",":",";","(",")","₽","&","@","\""])
+        XCTAssertEqual(KeyboardLayout.numberRows[2],
+                       [.symbols, .spacer(0.25),
+                        .character("."), .character(","), .character("?"),
+                        .character("!"), .character("'"),
+                        .spacer(0.25), .backspace])
+
+        XCTAssertEqual(chars(KeyboardLayout.symbolRows[0]),
+                       ["[","]","{","}","#","%","^","*","+","="])
+        XCTAssertEqual(chars(KeyboardLayout.symbolRows[1]),
+                       ["_","\\","|","~","<",">","$","€","¥","•"])
+        XCTAssertEqual(KeyboardLayout.symbolRows[2],
+                       [.numbers, .spacer(0.25),
+                        .character("."), .character(","), .character("?"),
+                        .character("!"), .character("'"),
+                        .spacer(0.25), .backspace])
+    }
+
+    // MARK: - Long-press maps (exact, per style)
+
+    func testThreeRowCalloutsMatchTheSpecification() {
+        XCTAssertEqual(KeyboardLayout.callouts(style: .threeRow), [
+            "ц": ["цӏ"],
+            "к": ["кӏ", "къ", "кь"],
+            "е": ["ё"],
+            "г": ["гӏ", "гъ", "гь"],
+            "х": ["хӏ", "хъ", "хь"],
+            "л": ["лъ", "лӏ"],
+            "ч": ["чӏ"],
+            "и": ["ы"],
+            "т": ["тӏ"],
+        ])
+    }
+
+    func testFourRowCalloutsAddComponentAccessOnDigraphKeys() {
+        let four = KeyboardLayout.callouts(style: .fourRow)
+        // Same digraph callouts on the base letters as the 3-row style…
+        for (key, alternates) in KeyboardLayout.callouts(style: .threeRow) {
+            XCTAssertEqual(four[key], alternates)
         }
-        XCTAssertEqual(Normalization.digraphTails, Set("ӏъь"),
-                       "tail set must stay exactly {ӏ, ъ, ь} for both styles")
+        // …plus the component letters that lost their dedicated keys.
+        XCTAssertEqual(four["гь"], ["ь"])
+        XCTAssertEqual(four["гъ"], ["ъ"])
+        XCTAssertEqual(four["кӏ"], ["ӏ"])
+        XCTAssertEqual(four["лъ"], ["лӏ"])
+        XCTAssertEqual(four.count, KeyboardLayout.callouts(style: .threeRow).count + 4)
     }
 
     // MARK: - Reachability
@@ -65,71 +146,68 @@ final class LayoutStyleTests: XCTestCase {
         for row in KeyboardLayout.letterRows(style: style) {
             result.formUnion(chars(row))
         }
-        result.formUnion(KeyboardLayout.callouts.keys)
-        result.formUnion(KeyboardLayout.callouts.values.flatMap { $0 })
+        result.formUnion(KeyboardLayout.callouts(style: style).values.flatMap { $0 })
         return result
     }
 
-    func testFourRowReachabilityIsPurelyAdditive() {
-        let three = typeable(style: .threeRow)
-        let four = typeable(style: .fourRow)
-        XCTAssertTrue(four.isSuperset(of: three),
-                      "the 4-row style must not lose a single typeable string")
-        // The characters that only exist as standalone keys or callouts.
+    func testEveryAvarCharacterIsTypeableInBothStyles() {
+        let required: Set<String> = [
+            "ъ", "ь", "ӏ", "ы", "ё", "ф", "щ",
+            "гъ", "хъ", "къ", "кӏ", "тӏ", "цӏ", "чӏ", "хӏ", "гӏ", "кь", "хь",
+            "гь", "лъ", "лӏ",
+        ]
         for style in LayoutStyle.allCases {
             let set = typeable(style: style)
-            for standalone in ["ъ", "Ӏ", "ь"] {
-                XCTAssertTrue(set.contains(standalone),
-                              "standalone \(standalone) must stay typeable in \(style)")
-            }
-            for calloutOnly in ["ы", "ё", "ф", "щ"] {
-                XCTAssertTrue(set.contains(calloutOnly),
-                              "\(calloutOnly) must stay typeable in \(style)")
+            for token in required {
+                XCTAssertTrue(set.contains(token),
+                              "\(token) must stay typeable in \(style)")
             }
         }
-        // Standalone ъ, Ӏ, ь are direct KEYS (not merely callouts) in both
-        // styles, because rows 2–4 of the 4-row grid are the original rows.
-        for style in LayoutStyle.allCases {
-            let keys = Set(KeyboardLayout.letterRows(style: style).flatMap(chars))
-            XCTAssertTrue(keys.isSuperset(of: ["ъ", "Ӏ", "ь"]))
+    }
+
+    // MARK: - Engine neutrality
+
+    func testEngineTailSourceIsTheStyleBlindUnion() {
+        // Normalization and the learned store derive digraph tails from
+        // the union map — asserting the derived set proves the layout
+        // rework cannot have moved the engine.
+        XCTAssertEqual(Normalization.digraphTails, Set("ӏъь"))
+        for (key, alternates) in KeyboardLayout.callouts(style: .fourRow) {
+            XCTAssertEqual(KeyboardLayout.callouts[key], alternates,
+                           "union map must contain every style's entries")
         }
     }
 
-    // MARK: - Geometry contract
+    // MARK: - Key names (exact, per the spec's table)
 
-    func testThreeRowGeometryStaysFrozen() {
-        let three = KeyboardLayout.metrics(for: .threeRow)
-        XCTAssertEqual(three, KeyboardLayout.Metrics(totalHeight: 250, keyHeight: 43, rowSpacing: 11),
-                       "the original hand-tuned geometry must never drift")
+    func testKeyNamesMatchTheSpecification() {
+        XCTAssertEqual(KeyboardLayout.label(for: .space, shifted: false), "Гьоркьобакӏ")
+        XCTAssertEqual(KeyboardLayout.label(for: .return, shifted: false), "Лъей")
+        XCTAssertEqual(KeyboardLayout.label(for: .letters, shifted: false), "аиу")
+        XCTAssertEqual(KeyboardLayout.label(for: .letters, shifted: true), "АИУ")
+
+        XCTAssertEqual(KeyboardLayout.returnLabel(for: .default), "Лъей")
+        XCTAssertEqual(KeyboardLayout.returnLabel(for: .go), "Рагьизе")
+        XCTAssertEqual(KeyboardLayout.returnLabel(for: .send), "Битӏизе")
+        XCTAssertEqual(KeyboardLayout.returnLabel(for: .done), "Лъугӏана")
+        XCTAssertEqual(KeyboardLayout.returnLabel(for: .next), "Хадусеб")
+        XCTAssertEqual(KeyboardLayout.returnLabel(for: .continue), "Цебехун")
+        XCTAssertEqual(KeyboardLayout.returnLabel(for: .join), "Цолъизе")
+        XCTAssertEqual(KeyboardLayout.returnLabel(for: .route), "Нух")
+        XCTAssertEqual(KeyboardLayout.returnLabel(for: .search), "Хъирщи")
+        XCTAssertEqual(KeyboardLayout.returnLabel(for: .emergencyCall), "SOS")
     }
 
-    func testFourRowKeepsTheFamiliarKeyGeometry() {
-        let three = KeyboardLayout.metrics(for: .threeRow)
-        let four = KeyboardLayout.metrics(for: .fourRow)
-        XCTAssertEqual(four.keyHeight, three.keyHeight,
-                       "the existing rows must not be compressed")
-        XCTAssertEqual(four.rowSpacing, three.rowSpacing)
-        // 36 bar + 8 gap + 5 key rows + 4 gaps + 1 slack, mirroring the
-        // three-row budget (36 + 8 + 4×43 + 3×11 + 1 = 250).
-        XCTAssertEqual(four.totalHeight,
-                       36 + 8 + 5 * four.keyHeight + 4 * four.rowSpacing + 1)
-    }
+    // MARK: - Geometry and persistence contracts
 
-    // MARK: - Labels and persistence contract
-
-    func testShiftedDigraphLabelMatchesWhatATapInserts() {
-        let key = KeyCap.character("гъ")
-        XCTAssertEqual(KeyboardLayout.label(for: key, shifted: false, capsLock: false), "гъ")
-        XCTAssertEqual(KeyboardLayout.label(for: key, shifted: true, capsLock: false), "Гъ",
-                       "shift-once previews the capitalized digraph, not ГЪ")
-        XCTAssertEqual(KeyboardLayout.label(for: key, shifted: true, capsLock: true), "ГЪ")
-        // Single letters are unchanged by the capsLock-aware path.
-        XCTAssertEqual(KeyboardLayout.label(for: .character("а"), shifted: true, capsLock: false), "А")
+    func testGeometryStaysFrozen() {
+        XCTAssertEqual(KeyboardLayout.metrics(for: .threeRow),
+                       KeyboardLayout.Metrics(totalHeight: 250, keyHeight: 43, rowSpacing: 11))
+        XCTAssertEqual(KeyboardLayout.metrics(for: .fourRow),
+                       KeyboardLayout.Metrics(totalHeight: 304, keyHeight: 43, rowSpacing: 11))
     }
 
     func testLayoutStyleRawValuesAreStable() {
-        // Persisted in UserDefaults — renaming a case would silently reset
-        // every user to the default style.
         XCTAssertEqual(LayoutStyle.threeRow.rawValue, "threeRow")
         XCTAssertEqual(LayoutStyle.fourRow.rawValue, "fourRow")
     }

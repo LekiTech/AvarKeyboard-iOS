@@ -22,16 +22,16 @@
 
 | # | Где используется | English | Русский | Аварский (текущий) | Комментарий |
 |---|---|---|---|---|---|
-| 1 | KeyboardLayout.swift — space key | Space | Пробел | **Гьоркьоб бакӀ** | reviewer's native term for the space bar (бакӀ = место); adopted |
-| 2 | KeyboardLayout.swift — return key (default) | Return | Ввод | **Ввод** | Russian loan, as on the system Russian keyboard; suggest a native alternative if one is idiomatic |
-| 3 | KeyboardLayout.swift — return key (Go) | Go | Перейти | **Ине** | ине = идти |
+| 1 | KeyboardLayout.swift — space key | Space | Пробел | **Гьоркьобакӏ** | из спецификации раскладки (слитное написание) |
+| 2 | KeyboardLayout.swift — return key (default) | Return | Ввод | **Лъей** | из спецификации раскладки |
+| 3 | KeyboardLayout.swift — return key (Go) | Go | Перейти | **Рагьизе** | из спецификации раскладки |
 | 4 | KeyboardLayout.swift — return key (Send) | Send | Отправить | **БитӀизе** | битӏизе = отправить, послать |
 | 5 | KeyboardLayout.swift — return key (Done) | Done | Готово | **ЛъугӀана** | лъугӏизе = закончиться; past «лъугӏана» = готово/закончилось |
 | 6 | KeyboardLayout.swift — return key (Next) | Next | Далее / Следующий | **Хадусеб** | хадусеб = следующий |
-| 7 | KeyboardLayout.swift — return key (Continue) | Continue | Продолжить | **Цебе бачине** | reviewer: «давам» — скорее диалект; принято «Цебе бачине» (цебе = вперёд, бачине = вести) |
-| 8 | KeyboardLayout.swift — return key (Join) | Join | Подключиться / Войти | **Лъугьине** | лъугьине = войти |
+| 7 | KeyboardLayout.swift — return key (Continue) | Continue | Продолжить | **Цебехун** | из спецификации раскладки |
+| 8 | KeyboardLayout.swift — return key (Join) | Join | Подключиться / Войти | **Цолъизе** | из спецификации раскладки |
 | 9 | KeyboardLayout.swift — return key (Route) | Route | Маршрут | **Нух** | нух = дорога, путь |
-| 10 | KeyboardLayout.swift — return key (Emergency) | Emergency call | Экстренный вызов | **Кумекалъе ахӀи** | кумек = помощь; ахӏи = зов, призыв (на помощь) |
+| 10 | KeyboardLayout.swift — return key (Emergency) | Emergency call | Экстренный вызов | **SOS** | из спецификации раскладки; также search → **Хъирщи** |
 | 11 | KeyboardView.swift — suggestion delete bar | Delete “word”? | Стереть «слово»? | **“…” гилдизеищ?** | гилдизе = удалить + вопросительная частица -ищ; please check the interrogative form |
 | 12 | KeyboardView.swift — delete bar, cancel | No | Нет | **Гуро** |  |
 | 13 | KeyboardView.swift — delete bar, confirm | Delete | Стереть | **Гилдизе** |  |
