@@ -1,7 +1,11 @@
 # Avar UI Translation Review
 
-Подготовлено для проверки носителем аварского языка. Все строки ниже уже
-внесены в приложение; исправления будут применены после вашей правки.
+**Статус: проверено носителем аварского языка (2026-08-02), правки
+применены.** Принятые исправления: «Гьоркьоб бакӀ» для клавиши пробела
+(и производные формы в настройках), «Цебе бачине» вместо диалектного
+«Давам», «Жиги» вместо «Жеги», «Хирияв!» вместо «Жан!». Открытый вопрос
+для подтверждения: «Жиги» — у Гимбатова словарная форма «жеги»;
+просим подтвердить выбранное написание.
 
 Конвенция палочки (принято): везде, где текст видит пользователь —
 клавиши, подсказки, настройки, вставляемый текст — используется
@@ -18,13 +22,13 @@
 
 | # | Где используется | English | Русский | Аварский (текущий) | Комментарий |
 |---|---|---|---|---|---|
-| 1 | KeyboardLayout.swift — space key | Space | Пробел | **Пробел** | Russian loan kept — Gimbatov has no native word for the typographic space; native alternative «гьоркьоблъи» (промежуток) felt too long for the key |
+| 1 | KeyboardLayout.swift — space key | Space | Пробел | **Гьоркьоб бакӀ** | reviewer's native term for the space bar (бакӀ = место); adopted |
 | 2 | KeyboardLayout.swift — return key (default) | Return | Ввод | **Ввод** | Russian loan, as on the system Russian keyboard; suggest a native alternative if one is idiomatic |
 | 3 | KeyboardLayout.swift — return key (Go) | Go | Перейти | **Ине** | ине = идти |
 | 4 | KeyboardLayout.swift — return key (Send) | Send | Отправить | **БитӀизе** | битӏизе = отправить, послать |
 | 5 | KeyboardLayout.swift — return key (Done) | Done | Готово | **ЛъугӀана** | лъугӏизе = закончиться; past «лъугӏана» = готово/закончилось |
 | 6 | KeyboardLayout.swift — return key (Next) | Next | Далее / Следующий | **Хадусеб** | хадусеб = следующий |
-| 7 | KeyboardLayout.swift — return key (Continue) | Continue | Продолжить | **Давам** | loanword shorthand («давам гьабизе» too long for a key) — LOW confidence, please verify |
+| 7 | KeyboardLayout.swift — return key (Continue) | Continue | Продолжить | **Цебе бачине** | reviewer: «давам» — скорее диалект; принято «Цебе бачине» (цебе = вперёд, бачине = вести) |
 | 8 | KeyboardLayout.swift — return key (Join) | Join | Подключиться / Войти | **Лъугьине** | лъугьине = войти |
 | 9 | KeyboardLayout.swift — return key (Route) | Route | Маршрут | **Нух** | нух = дорога, путь |
 | 10 | KeyboardLayout.swift — return key (Emergency) | Emergency call | Экстренный вызов | **Кумекалъе ахӀи** | кумек = помощь; ахӏи = зов, призыв (на помощь) |
@@ -46,8 +50,8 @@
 | 26 | SettingsPanelView — toggle | Space after accepting a suggestion | Пробел после подсказки | **Малълъиялда хадуб пробел** | -да хадуб = после |
 | 27 | SettingsPanelView — section label | Keys | Клавиши | **Клавишаби** | loan + Avar plural -би |
 | 28 | SettingsPanelView — toggle | Double space types a period | Двойной пробел — точка | **КӀиго пробел — тӀанкӀ** | кӏиго = два; тӏанкӏ = точка |
-| 29 | SettingsPanelView — toggle | Cursor control with the space bar | Курсор пробелом | **Пробелалъ курсор** | instrumental -алъ; please check case choice |
-| 30 | SettingsPanelView — toggle | Show «авар» on the space bar | «авар» на пробеле | **Пробелалда «авар»** | superessive -алда = на |
+| 29 | SettingsPanelView — toggle | Cursor control with the space bar | Курсор пробелом | **Гьоркьоб бакӀалъул курсор** | reviewer's form (genitive -алъул); adopted |
+| 30 | SettingsPanelView — toggle | Show «авар» on the space bar | «авар» на пробеле | **Гьоркьоб бакӀалда «авар»** | reviewer's form (superessive -алда); adopted |
 | 31 | SettingsPanelView — section label | Learning — | Обучение — | **Лъазаби —** | лъазабизе = выучить, узнать |
 | 32 | SettingsPanelView — learning speed | Fast | Быстро | **Хехаб** | хехаб = быстрый |
 | 33 | SettingsPanelView — learning speed subtitle | 1 time · | 1 раз · | **1 нухалъ ·** | нухалъ = раз (also 3/5) |
@@ -61,7 +65,7 @@
 | 41 | SettingsPanelView — theme | Light | Светлая | **КанчӀаб** | канчӏаб = светлый |
 | 42 | SettingsPanelView — theme | Dark | Тёмная | **БецӀаб** | бецӏаб = тёмный |
 | 43 | SettingsPanelView — dictionary counter | learned words | выученные слова | **лъазарурал рагӀаби** | participle of лъазабизе + р-class plural — please verify the participle form |
-| 44 | SettingsPanelView — dictionary empty state | No words yet | Слов пока нет | **Жеги рагӀаби гьечӀо** |  |
+| 44 | SettingsPanelView — dictionary empty state | No words yet | Слов пока нет | **Жиги рагӀаби гьечӀо** | reviewer's spelling; Gimbatov lists «жеги» — просьба подтвердить |
 | 45 | SettingsPanelView — dictionary action | Delete all learned words | Стереть все выученные слова | **Киналго лъазарурал рагӀаби гилдизе** | киналго = все |
 | 46 | SettingsPanelView — confirm sheet title | Delete all learned words? | Стереть все выученные слова? | **Киналго лъазарурал рагӀаби гилдизеищ?** | interrogative -ищ — please verify |
 | 47 | SettingsPanelView — confirm sheet button | Delete | Стереть | **Гилдизе** |  |
@@ -83,7 +87,7 @@
 |---|---|---|---|---|---|
 | 1 | `salam` | Hello! | Салам!/Привет! | **Салам!** | universal greeting, unchanged |
 | 2 | `thanks` | Thank you! | Спасибо! | **Баркала!** |  |
-| 3 | `sweetheart` | Sweetheart! | Дорогой! / Джан! | **Жан!** | common Dagestani endearment — please verify Avar spelling |
+| 3 | `sweetheart` | Sweetheart! | Дорогой! / Джан! | **Хирияв!** | reviewer: «хирияв» (м.р.) / «хирияй» (ж.р.) обычны у аварцев; принята мужская форма, как и в `loveyou` |
 | 4 | `great` | Great! | Отлично! | **ЛъикӀ буго!** | «хорошо есть» |
 | 5 | `yes` | Yes | Да / Конечно | **Гьай-гьай!** | = конечно; plain «У» felt too short for a sticker — please verify |
 | 6 | `no` | No | Нет | **ГьечӀо!** |  |
@@ -104,9 +108,9 @@
 
 ## 3. Оставлено без перевода (намеренно)
 
-- «Пробел», «Ввод», «Тема», «Словарь», «Клавиатура», «Клавишаби», «курсор»,
+- «Ввод», «Тема», «Словарь», «Клавиатура», «Клавишаби», «курсор»,
   «Системаялъул», «Версия…» — русские заимствования, привычные в современном
-  аварском интерфейсе. Если для какого-то есть естественное аварское слово —
-  предложите.
+  аварском интерфейсе. «Пробел» остаётся только для символа пробела (строки
+  26 и 28); сама клавиша называется «Гьоркьоб бакӀ» по правке рецензента.
 - Название приложения по-русски («Аварская клавиатура») — ждёт решения по
   родному названию (напр. «МагӀарул клавиатура»).

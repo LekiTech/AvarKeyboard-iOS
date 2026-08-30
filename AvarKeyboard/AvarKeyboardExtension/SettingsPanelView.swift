@@ -202,11 +202,11 @@ struct SettingsPanelView: View {
                           subtitle: String(localized: "Double space types a period"),
                           binding: binding(\.doubleSpacePeriod))
                 divider
-                toggleRow(title: "Пробелалъ курсор",
+                toggleRow(title: "Гьоркьоб бакӀалъул курсор",
                           subtitle: String(localized: "Cursor control with the space bar"),
                           binding: binding(\.spaceCursor))
                 divider
-                toggleRow(title: "Пробелалда «авар»",
+                toggleRow(title: "Гьоркьоб бакӀалда «авар»",
                           subtitle: String(localized: "Show «авар» on the space bar"),
                           binding: binding(\.spaceLabel))
             }
@@ -304,7 +304,7 @@ struct SettingsPanelView: View {
 
             if words.isEmpty {
                 group {
-                    Text(verbatim: "Жеги рагӀаби гьечӀо")
+                    Text(verbatim: "Жиги рагӀаби гьечӀо")
                         .font(.system(size: 14))
                         .foregroundColor(Color(UIColor.secondaryLabel))
                         .frame(maxWidth: .infinity, alignment: .center)

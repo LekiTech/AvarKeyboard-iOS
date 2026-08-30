@@ -3,7 +3,7 @@
   "strings" : {
     "" : {},
     "Cursor control with the space bar" : {
-      "comment" : "Settings subtitle under «Пробелалъ курсор»",
+      "comment" : "Settings subtitle under «Гьоркьоб бакӀалъул курсор»",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -105,7 +105,7 @@
       }
     },
     "Show «авар» on the space bar" : {
-      "comment" : "Settings subtitle under «Пробелалда «авар»»",
+      "comment" : "Settings subtitle under «Гьоркьоб бакӀалда «авар»»",
       "localizations" : {
         "en" : {
           "stringUnit" : {

@@ -104,7 +104,7 @@ enum KeyboardLayout {
         case .globe:            return "🌐"
         case .emoji:            return "😀"
         case .settings:         return ""    // gear icon, rendered by KeyButton
-        case .space:            return "Пробел"
+        case .space:            return "Гьоркьоб бакӀ"
         case .return:           return "Ввод"
         }
     }
@@ -135,7 +135,7 @@ enum KeyboardLayout {
         case .send:             return "БитӀизе"
         case .done:             return "ЛъугӀана"
         case .next:             return "Хадусеб"
-        case .`continue`:       return "Давам"
+        case .`continue`:       return "Цебе бачине"
         case .join:             return "Лъугьине"
         case .route:            return "Нух"
         case .emergencyCall:    return "Кумекалъе ахӀи"

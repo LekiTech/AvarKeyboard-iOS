@@ -23,7 +23,7 @@ struct ImageSticker {
 let imageStickers: [ImageSticker] = [
     ImageSticker(source: "salam",      phrase: "Салам!"),
     ImageSticker(source: "thanks",     phrase: "Баркала!"),
-    ImageSticker(source: "sweetheart", phrase: "Жан!"),
+    ImageSticker(source: "sweetheart", phrase: "Хирияв!"),
     ImageSticker(source: "great",      phrase: "ЛъикӀ буго!"),
     ImageSticker(source: "yes",        phrase: "Гьай-гьай!"),
     ImageSticker(source: "no",         phrase: "ГьечӀо!"),
