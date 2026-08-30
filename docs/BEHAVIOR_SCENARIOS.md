@@ -1,10 +1,15 @@
 > **Note (Avar Keyboard).** This document is inherited unchanged from the
 > Lezgi Keyboard project, whose engine this app reuses. The architecture
 > and behavior described here apply to Avar Keyboard as well, with two
-> caveats: the letter rows and long-press callouts are now the fixed Avar
-> layout in `KeyboardLayout.swift`, and the hard-sign position option
-> (`LayoutVariant`, the «ъ» quick-switch menu and its settings page) has
-> been removed. Language examples and names in the text still refer to
+> caveats. First, the letter rows, symbol pages, and long-press callouts
+> are now the Avar layouts in `KeyboardLayout.swift` — two switchable
+> styles (`LayoutStyle.threeRow`/`.fourRow`, keyboard settings →
+> «Раскладка»), each with its own geometry in `KeyboardLayout.Metrics`
+> (250pt vs 304pt keyboard height, emoji grid included), so the fixed
+> 250pt frame described below now applies only to the 3-row style.
+> Second, the hard-sign position option (`LayoutVariant`, the «ъ»
+> quick-switch menu and its settings page) has been replaced by that
+> style switch. Language examples and names in the text still refer to
 > Lezgi; the remaining Avar resources are tracked by TODO(Avar) markers
 > in the code.
 
