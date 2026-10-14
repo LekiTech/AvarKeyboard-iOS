@@ -51,7 +51,7 @@ struct SettingsPanelView: View {
     /// Wipes all learned data (the controller's existing closure).
     var onResetAll: (() -> Void)? = nil
 
-    private enum Page {
+    enum Page {
         case home, input, theme, dictionary, about
     }
 
@@ -59,6 +59,22 @@ struct SettingsPanelView: View {
     @State private var showsDeleteAllSheet = false
     @State private var words: [String] = []
     @State private var wordCount = 0
+
+    /// `initialPage` and `showsDeleteAllSheet` exist for snapshot tests;
+    /// the keyboard always opens the panel on the home page.
+    init(model: KeyboardModel,
+         onDeleteWord: ((String) -> Void)? = nil,
+         onResetAll: (() -> Void)? = nil,
+         initialPage: Page = .home,
+         showsDeleteAllSheet: Bool = false) {
+        self.model = model
+        self.onDeleteWord = onDeleteWord
+        self.onResetAll = onResetAll
+        if initialPage != .home {
+            _stack = State(initialValue: [.home, initialPage])
+        }
+        _showsDeleteAllSheet = State(initialValue: showsDeleteAllSheet)
+    }
 
     private var page: Page { stack.last ?? .home }
 

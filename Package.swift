@@ -10,7 +10,7 @@
 //  the logic testable.
 //
 //  Run from the repo root:
-//    xcodebuild test -scheme AvarCoreTests \
+//    xcodebuild test -scheme AvarCoreTests-Package \
 //      -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 //
 //  iOS-only by design: the shared layout file uses UIKit types.
@@ -35,12 +35,22 @@ let package = Package(
                 "StaticBigrams.swift",
                 "KeyboardSettings.swift",
                 "KeyboardLayout.swift",
+                // Phase 1 characterization: the model, the two SwiftUI
+                // views and the emoji catalog, so persisted keys, layout
+                // wiring and every rendered string can be pinned (the
+                // views through image snapshots).
+                "KeyboardModel.swift",
+                "KeyboardView.swift",
+                "SettingsPanelView.swift",
+                "EmojiData.swift",
             ]
         ),
         .testTarget(
             name: "AvarCoreTests",
             dependencies: ["AvarCore"],
             path: "Tests/AvarCoreTests",
+            // Reference images are read through #filePath, not bundled.
+            exclude: ["Snapshots"],
             resources: [
                 // Frozen production-shaped databases; see
                 // scripts/make_golden_fixture_v1.py for provenance.

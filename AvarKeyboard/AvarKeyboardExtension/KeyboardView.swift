@@ -56,6 +56,28 @@ struct KeyboardView: View {
     /// extensions — attempting it kills the keyboard).
     @State private var pendingDeleteWord: String? = nil
 
+    /// `pendingDeleteWord` exists for snapshot tests; the keyboard always
+    /// starts with no confirmation showing.
+    init(model: KeyboardModel,
+         onKey: @escaping (KeyCap) -> Void,
+         onSuggestion: ((String) -> Void)? = nil,
+         onSuggestionDelete: ((String) -> Void)? = nil,
+         onLearnedReset: (() -> Void)? = nil,
+         onEmojiInsert: ((String) -> Void)? = nil,
+         onCursorMove: ((Int) -> Void)? = nil,
+         onCursorLineMove: ((Int) -> Void)? = nil,
+         pendingDeleteWord: String? = nil) {
+        self.model = model
+        self.onKey = onKey
+        self.onSuggestion = onSuggestion
+        self.onSuggestionDelete = onSuggestionDelete
+        self.onLearnedReset = onLearnedReset
+        self.onEmojiInsert = onEmojiInsert
+        self.onCursorMove = onCursorMove
+        self.onCursorLineMove = onCursorLineMove
+        _pendingDeleteWord = State(initialValue: pendingDeleteWord)
+    }
+
     // Emoji page state
     @State private var emojiCurrentSection: Int = 0
     @State private var emojiScrollTarget: Int? = nil
