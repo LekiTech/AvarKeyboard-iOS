@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import GeneralKeyboardBridge
 
 @main
 struct AvarKeyboardApp: App {

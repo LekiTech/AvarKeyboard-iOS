@@ -11,13 +11,16 @@ import XCTest
 import SQLite3
 import UIKit
 @testable import AvarCore
+@testable import GeneralKeyboard
 
-final class AvarDefinitionTests: XCTestCase {
+final class AvarDefinitionTests: AvarTestCase {
 
-    private let d = KeyboardDefinition.current
+    private var d: KeyboardDefinition { KeyboardDefinition.current }
 
     func testTheCurrentDefinitionIsAvarAndValid() {
         XCTAssertEqual(d.validationErrors(), [])
+        // Stable identity (Phase 3): the extension's bundle identifier.
+        XCTAssertEqual(d.id, "org.lekitech.avarkeyboard.AvarKeyboardExtension")
         XCTAssertEqual(d.data.appGroupID, "group.org.lekitech.avarkeyboard")
         XCTAssertEqual(AvarIdentity.appGroupID, d.data.appGroupID)
         XCTAssertEqual(d.data.wordsArtifact, "avar_words")
@@ -175,42 +178,25 @@ final class AvarDefinitionTests: XCTestCase {
         XCTAssertEqual(mismatches, [], "\(inputs.count) inputs compared")
     }
 
-    // MARK: - Engine neutrality
+    // MARK: - No engine code in the product
 
-    /// Engine files: everything that moves into General Keyboard. Their
-    /// string literals must not contain a single Cyrillic letter; the
-    /// built-in normalization profile is the one deliberate exception.
-    func testEngineFilesSpellNoLanguageData() throws {
-        let engine = [
-            "KeyboardLayout.swift", "KeyboardModel.swift", "KeyboardView.swift",
-            "SettingsPanelView.swift", "EmojiData.swift", "KeyboardViewController.swift",
-            "KeyboardDefinition.swift", "Normalization.swift", "LearnedWords.swift",
-            "Migrations.swift", "WordSuggestions.swift", "StaticBigrams.swift",
-            "ContributionOutbox.swift", "ContributionBridge.swift", "ContributionExporter.swift",
-            "KeyboardSettings.swift", "MemoryProbe.swift",
-        ]
-        let literal = try NSRegularExpression(pattern: #""(?:[^"\\\n]|\\.)*""#)
-        var offenders: [String] = []
-        for file in engine {
-            let source = try String(contentsOf: Self.extensionDirectory.appendingPathComponent(file),
-                                    encoding: .utf8)
-            for (number, line) in source.components(separatedBy: "\n").enumerated() {
-                let code = line.components(separatedBy: "//").first ?? line
-                let range = NSRange(code.startIndex..., in: code)
-                for match in literal.matches(in: code, range: range) {
-                    let text = String(code[Range(match.range, in: code)!])
-                    if text.unicodeScalars.contains(where: { (0x0400...0x04FF).contains($0.value) }) {
-                        offenders.append("\(file):\(number + 1): \(text)")
-                    }
-                }
-            }
-        }
-        // The one sanctioned exception: the frozen `palochka_fixed` = 1 data
-        // step, which repairs databases written by released builds. It is
-        // historical and must keep its v1 meaning forever (design §2.4a);
-        // it never changes a fresh store.
-        let frozenHistoricalSteps = ["Migrations.swift:186: \"\u{04CF}\""]
-        XCTAssertEqual(offenders, frozenHistoricalSteps)
+    /// Since Phase 3 the engine is the General Keyboard package, and its
+    /// neutrality is enforced there (EngineNeutralityTests). The extension
+    /// target holds only Avar's product files and a principal class that
+    /// installs the Avar definition in both initializers.
+    func testTheExtensionHoldsOnlyProductCode() throws {
+        let swiftFiles = try FileManager.default
+            .contentsOfDirectory(atPath: Self.extensionDirectory.path)
+            .filter { $0.hasSuffix(".swift") }
+            .sorted()
+        XCTAssertEqual(swiftFiles, ["AvarDefinition.swift", "AvarIdentity.swift", "AvarLayout.swift",
+                                    "AvarStrings.swift", "KeyboardViewController.swift"])
+
+        let principal = try String(contentsOf: Self.extensionDirectory
+            .appendingPathComponent("KeyboardViewController.swift"), encoding: .utf8)
+        XCTAssertTrue(principal.contains("final class KeyboardViewController: GeneralKeyboardViewController"))
+        XCTAssertEqual(principal.components(separatedBy: "KeyboardDefinition.install(AvarDefinition.definition)")
+                        .count - 1, 2, "install in init(nibName:bundle:) and init?(coder:)")
     }
 }
 

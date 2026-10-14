@@ -1,52 +1,35 @@
 // swift-tools-version: 6.0
 //
-//  Test-only package for the keyboard's storage and ranking logic.
+//  Test-only package for the Avar keyboard's product layer.
 //
-//  It owns no source of its own: `AvarCore` compiles the very same files
-//  that ship inside the AvarKeyboardExtension extension target, via an explicit
-//  `sources:` list. Nothing is copied or moved, so the tests cannot drift
-//  from production code, and the app's Xcode project is untouched — that
-//  project builds a released app and must not be destabilized just to make
-//  the logic testable.
+//  The keyboard engine lives in the General Keyboard package
+//  (../GeneralKeyboard-iOS) and is tested there. This package tests what
+//  Avar adds on top: `AvarCore` compiles the very same product files that
+//  ship inside the AvarKeyboardExtension target (the definition, layouts,
+//  strings and identity), via an explicit `sources:` list, and the tests
+//  run them through the real engine: characterization of persisted state,
+//  pixel snapshots of every screen, the definition, the shipped artifacts.
 //
-//  Run from the repo root:
+//  Run from the repo root (General Keyboard checked out next to this repo):
 //    xcodebuild test -scheme AvarCoreTests-Package \
-//      -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+//      -destination 'platform=iOS Simulator,name=iPhone 18 Pro,OS=27.0'
 //
-//  iOS-only by design: the shared layout file uses UIKit types.
+//  iOS-only by design: the layout and the engine use UIKit types.
 //
 import PackageDescription
 
 let package = Package(
     name: "AvarCoreTests",
     platforms: [.iOS(.v18)],
+    dependencies: [
+        .package(path: "../GeneralKeyboard-iOS"),
+    ],
     targets: [
         .target(
             name: "AvarCore",
+            dependencies: [.product(name: "GeneralKeyboard", package: "GeneralKeyboard-iOS")],
             path: "AvarKeyboard/AvarKeyboardExtension",
             sources: [
-                "LearnedWords.swift",
-                "Migrations.swift",
-                "ContributionOutbox.swift",
-                "ContributionBridge.swift",
-                "ContributionExporter.swift",
-                "Normalization.swift",
-                "WordSuggestions.swift",
-                "StaticBigrams.swift",
-                "KeyboardSettings.swift",
-                "KeyboardLayout.swift",
-                // Phase 1 characterization: the model, the two SwiftUI
-                // views and the emoji catalog, so persisted keys, layout
-                // wiring and every rendered string can be pinned (the
-                // views through image snapshots).
-                "KeyboardModel.swift",
-                "KeyboardView.swift",
-                "SettingsPanelView.swift",
-                "EmojiData.swift",
-                // Phase 1b: the definition boundary and the Avar product
-                // definition the engine now reads everything through.
-                "KeyboardDefinition.swift",
-                "NormalizationProfile.swift",
                 "AvarDefinition.swift",
                 "AvarLayout.swift",
                 "AvarStrings.swift",
@@ -55,15 +38,10 @@ let package = Package(
         ),
         .testTarget(
             name: "AvarCoreTests",
-            dependencies: ["AvarCore"],
+            dependencies: ["AvarCore", .product(name: "GeneralKeyboard", package: "GeneralKeyboard-iOS")],
             path: "Tests/AvarCoreTests",
             // Reference images are read through #filePath, not bundled.
-            exclude: ["Snapshots"],
-            resources: [
-                // Frozen production-shaped databases; see
-                // scripts/make_golden_fixture_v1.py for provenance.
-                .copy("Fixtures"),
-            ]
+            exclude: ["Snapshots"]
         ),
     ]
 )

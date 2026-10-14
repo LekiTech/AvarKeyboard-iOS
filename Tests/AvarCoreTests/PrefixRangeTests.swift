@@ -16,8 +16,9 @@
 import XCTest
 import SQLite3
 @testable import AvarCore
+@testable import GeneralKeyboard
 
-final class PrefixRangeTests: XCTestCase {
+final class PrefixRangeTests: AvarTestCase {
 
     private var dir: URL!
     private var db: OpaquePointer?

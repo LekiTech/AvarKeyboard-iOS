@@ -14,10 +14,11 @@ import CryptoKit
 import SQLite3
 import UIKit
 @testable import AvarCore
+@testable import GeneralKeyboard
 
 // MARK: - KeyboardSettings persistence
 
-final class SettingsPersistenceCharacterizationTests: XCTestCase {
+final class SettingsPersistenceCharacterizationTests: AvarTestCase {
 
     private var suiteName = ""
     private var defaults: UserDefaults!
@@ -121,7 +122,7 @@ final class SettingsPersistenceCharacterizationTests: XCTestCase {
 // MARK: - KeyboardModel persisted state, layout composition, presentation
 
 @MainActor
-final class KeyboardModelCharacterizationTests: XCTestCase {
+final class KeyboardModelCharacterizationTests: AvarTestCase {
 
     private func model(style: LayoutStyle? = .threeRow, recentEmojis: [String] = [],
                        learnedWords: [String] = [], settings: KeyboardSettings? = nil)
@@ -231,7 +232,7 @@ final class KeyboardModelCharacterizationTests: XCTestCase {
 
 // MARK: - Language and product constants
 
-final class LanguageConstantsCharacterizationTests: XCTestCase {
+final class LanguageConstantsCharacterizationTests: AvarTestCase {
 
     func testAppGroupIdentifier() {
         // Phase 1b moved the constant out of ContributionBridge into the

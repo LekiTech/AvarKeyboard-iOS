@@ -10,6 +10,7 @@
 //
 
 import UIKit
+import GeneralKeyboard
 
 enum AvarStrings {
 

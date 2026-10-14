@@ -8,10 +8,14 @@
 //
 
 import Foundation
+import GeneralKeyboard
 
 enum AvarDefinition {
 
     static let definition = KeyboardDefinition(
+        // Stable identity: the extension's bundle identifier. Never reused
+        // for a different definition.
+        id: "org.lekitech.avarkeyboard.AvarKeyboardExtension",
         data: LanguageData(
             appGroupID: AvarIdentity.appGroupID,
             wordsArtifact: "avar_words",
@@ -33,10 +37,4 @@ enum AvarDefinition {
         strings: AvarStrings.strings,
         emojiCategoryTitles: AvarStrings.emojiCategoryTitles
     )
-}
-
-extension KeyboardDefinition {
-    /// Phase 1 binding: the product supplies the definition statically.
-    /// Phase 2 replaces this with installation by the principal class.
-    static let current: KeyboardDefinition = AvarDefinition.definition
 }

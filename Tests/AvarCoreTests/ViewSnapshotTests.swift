@@ -26,9 +26,10 @@ import XCTest
 import SwiftUI
 import UIKit
 @testable import AvarCore
+@testable import GeneralKeyboard
 
 @MainActor
-final class ViewSnapshotTests: XCTestCase {
+final class ViewSnapshotTests: AvarTestCase {
 
     // MARK: - Keyboard
 

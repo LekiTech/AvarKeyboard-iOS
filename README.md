@@ -3,9 +3,11 @@
 A native iOS keyboard for the Avar language (авар мацӀ) with a sticker pack
 of a friendly eagle in a papakha — developed by [LekiTech](https://github.com/LekiTech).
 
-> **Project status.** This project reuses the engine of the
-> [Lezgi Keyboard](https://github.com/LekiTech) codebase under a new identity
-> (Avar Keyboard, `org.lekitech.avarkeyboard`). The **fixed Avar layout and
+> **Project status.** The keyboard engine is the shared
+> **General Keyboard** Swift Package (`GeneralKeyboard-iOS`), which grew out
+> of the [Lezgi Keyboard](https://github.com/LekiTech) codebase; this
+> repository holds the Avar product on top of it (Avar Keyboard,
+> `org.lekitech.avarkeyboard`). The **fixed Avar layout and
 > long-press callouts are in place** (`AvarKeyboardExtension/AvarLayout.swift`)
 > and the keyboard ships a **63,879-word Avar dictionary** with
 > corpus-derived `base_score` ranking plus a **5,101-pair static bigram
@@ -58,11 +60,20 @@ Twenty illustrated stickers of an eagle chick in a papakha.
 
 - `AvarKeyboard/AvarKeyboard.xcodeproj` — Xcode project (3 targets)
 - `AvarKeyboard/AvarKeyboard/` — containing app (onboarding, sticker sharing)
-- `AvarKeyboard/AvarKeyboardExtension/` — the keyboard extension
+- `AvarKeyboard/AvarKeyboardExtension/` — the keyboard extension: the Avar
+  `KeyboardDefinition` (`AvarDefinition`, `AvarLayout`, `AvarStrings`,
+  `AvarIdentity`), the principal class, the dictionary artifacts and plists.
+  Engine code lives in General Keyboard, linked as a local Swift Package:
+  check out `GeneralKeyboard-iOS` next to this repository before building
+- `Package.swift`, `Tests/AvarCoreTests/` — product tests (definition,
+  persisted-state characterization, pixel snapshots, shipped artifacts),
+  run through the General Keyboard engine
 - `AvarKeyboard/AvarStickers/` — iMessage sticker pack target
 - `AvarStickers/` — 1024×1024 source sticker PNGs
-- `scripts/` — asset generators (emoji data, sticker packs)
-- `docs/` — engine documentation inherited from the Lezgi project
+- `scripts/` — dictionary build and sticker pack generators (the emoji
+  catalog generator moved to General Keyboard)
+- `docs/` — product documents, plus engine documentation inherited from the
+  Lezgi project (the maintained copies live in `GeneralKeyboard-iOS/docs/engine/`)
 
 ## Third-party components
 

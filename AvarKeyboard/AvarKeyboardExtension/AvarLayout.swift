@@ -16,6 +16,7 @@
 //
 
 import Foundation
+import GeneralKeyboard
 
 enum AvarLayout {
 

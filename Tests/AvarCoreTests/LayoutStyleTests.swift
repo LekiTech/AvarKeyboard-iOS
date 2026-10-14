@@ -12,8 +12,9 @@
 
 import XCTest
 @testable import AvarCore
+@testable import GeneralKeyboard
 
-final class LayoutStyleTests: XCTestCase {
+final class LayoutStyleTests: AvarTestCase {
 
     private func chars(_ row: [KeyCap]) -> [String] {
         row.compactMap { if case .character(let s) = $0 { return s } else { return nil } }

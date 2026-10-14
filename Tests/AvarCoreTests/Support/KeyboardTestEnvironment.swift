@@ -10,7 +10,9 @@
 
 import Foundation
 import UIKit
+import XCTest
 @testable import AvarCore
+@testable import GeneralKeyboard
 
 enum KeyboardTestEnvironment {
 
@@ -83,4 +85,15 @@ final class MockTextDocumentProxy: NSObject, UITextDocumentProxy {
     func unmarkText() {}
     func insertText(_ text: String) { before += text }
     func deleteBackward() { if !before.isEmpty { before.removeLast() } }
+}
+
+/// Every Avar test runs with the Avar definition installed, exactly as the
+/// extension's principal class installs it. Engine statics capture the
+/// definition on first use; each class installs again, which is a no-op
+/// for the same definition.
+class AvarTestCase: XCTestCase {
+    override class func setUp() {
+        super.setUp()
+        KeyboardDefinition.install(AvarDefinition.definition)
+    }
 }

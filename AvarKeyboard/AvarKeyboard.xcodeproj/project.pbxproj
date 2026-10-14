@@ -10,6 +10,9 @@
 		E27822DF2FF1F2A800255D0E /* AvarKeyboardExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E27822D82FF1F2A800255D0E /* AvarKeyboardExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		E27823022FF2000000255D0E /* AvarStickers.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E27823012FF2000000255D0E /* AvarStickers.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		E27823122FF2000000255D0E /* TelegramStickersImport in Frameworks */ = {isa = PBXBuildFile; productRef = E27823112FF2000000255D0E /* TelegramStickersImport */; };
+		E2C3A00000000000000000B1 /* GeneralKeyboard in Frameworks */ = {isa = PBXBuildFile; productRef = E2C3A00000000000000000A1 /* GeneralKeyboard */; };
+		E2C3A00000000000000000B2 /* GeneralKeyboardApp in Frameworks */ = {isa = PBXBuildFile; productRef = E2C3A00000000000000000A2 /* GeneralKeyboardApp */; };
+		E2C3A00000000000000000B3 /* GeneralKeyboardBridge in Frameworks */ = {isa = PBXBuildFile; productRef = E2C3A00000000000000000A3 /* GeneralKeyboardBridge */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -76,7 +79,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				AvarIdentity.swift,
-				ContributionBridge.swift,
 			);
 			target = E27822C52FF1F09E00255D0E /* AvarKeyboard */;
 		};
@@ -116,6 +118,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				E27823122FF2000000255D0E /* TelegramStickersImport in Frameworks */,
+				E2C3A00000000000000000B2 /* GeneralKeyboardApp in Frameworks */,
+				E2C3A00000000000000000B3 /* GeneralKeyboardBridge in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -123,6 +127,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E2C3A00000000000000000B1 /* GeneralKeyboard in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -180,6 +185,8 @@
 			name = AvarKeyboard;
 			packageProductDependencies = (
 				E27823112FF2000000255D0E /* TelegramStickersImport */,
+				E2C3A00000000000000000A2 /* GeneralKeyboardApp */,
+				E2C3A00000000000000000A3 /* GeneralKeyboardBridge */,
 			);
 			productName = AvarKeyboard;
 			productReference = E27822C62FF1F09E00255D0E /* AvarKeyboard.app */;
@@ -202,6 +209,7 @@
 			);
 			name = AvarKeyboardExtension;
 			packageProductDependencies = (
+				E2C3A00000000000000000A1 /* GeneralKeyboard */,
 			);
 			productName = AvarKeyboardExtension;
 			productReference = E27822D82FF1F2A800255D0E /* AvarKeyboardExtension.appex */;
@@ -262,6 +270,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				E27823102FF2000000255D0E /* XCRemoteSwiftPackageReference "TelegramStickersImport" */,
+				E2C3A00000000000000000A0 /* XCLocalSwiftPackageReference "../../GeneralKeyboard-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E27822C72FF1F09E00255D0E /* Products */;
@@ -691,6 +700,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		E2C3A00000000000000000A0 /* XCLocalSwiftPackageReference "../../GeneralKeyboard-iOS" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../GeneralKeyboard-iOS";
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		E27823102FF2000000255D0E /* XCRemoteSwiftPackageReference "TelegramStickersImport" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -707,6 +723,21 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E27823102FF2000000255D0E /* XCRemoteSwiftPackageReference "TelegramStickersImport" */;
 			productName = TelegramStickersImport;
+		};
+		E2C3A00000000000000000A1 /* GeneralKeyboard */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E2C3A00000000000000000A0 /* XCLocalSwiftPackageReference "../../GeneralKeyboard-iOS" */;
+			productName = GeneralKeyboard;
+		};
+		E2C3A00000000000000000A2 /* GeneralKeyboardApp */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E2C3A00000000000000000A0 /* XCLocalSwiftPackageReference "../../GeneralKeyboard-iOS" */;
+			productName = GeneralKeyboardApp;
+		};
+		E2C3A00000000000000000A3 /* GeneralKeyboardBridge */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E2C3A00000000000000000A0 /* XCLocalSwiftPackageReference "../../GeneralKeyboard-iOS" */;
+			productName = GeneralKeyboardBridge;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

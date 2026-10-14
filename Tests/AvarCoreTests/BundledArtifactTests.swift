@@ -10,8 +10,9 @@
 import XCTest
 import SQLite3
 @testable import AvarCore
+@testable import GeneralKeyboard
 
-final class BundledArtifactTests: XCTestCase {
+final class BundledArtifactTests: AvarTestCase {
 
     private var dir: URL!
 
