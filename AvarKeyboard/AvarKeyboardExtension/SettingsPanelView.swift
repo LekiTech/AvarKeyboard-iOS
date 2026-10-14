@@ -78,6 +78,10 @@ struct SettingsPanelView: View {
 
     private var page: Page { stack.last ?? .home }
 
+    private static let strings = KeyboardDefinition.current.strings
+    private static let layout = KeyboardDefinition.current.layout
+    private var strings: KeyboardStrings { Self.strings }
+
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
@@ -115,10 +119,10 @@ struct SettingsPanelView: View {
     private var title: String {
         switch page {
         case .home:       return ""
-        case .input:      return "Хъвай"
-        case .theme:      return "Тема"
-        case .dictionary: return "Словарь"
-        case .about:      return "Клавиатураялъул хӀакъалъулъ"
+        case .input:      return strings.pageInput
+        case .theme:      return strings.pageTheme
+        case .dictionary: return strings.pageDictionary
+        case .about:      return strings.pageAbout
         }
     }
 
@@ -134,7 +138,7 @@ struct SettingsPanelView: View {
                 HStack(spacing: 2) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 17, weight: .semibold))
-                    Text(verbatim: stack.count > 1 ? "Нахъе" : "Клавиатура")
+                    Text(verbatim: stack.count > 1 ? strings.back : strings.close)
                         .font(.system(size: 16, weight: .medium))
                 }
                 .foregroundColor(.spAccent)
@@ -160,30 +164,30 @@ struct SettingsPanelView: View {
     private var homePage: some View {
         Group {
             VStack(alignment: .leading, spacing: 3) {
-                Text(verbatim: "АВАР КЛАВИАТУРА")
+                Text(verbatim: strings.settingsCaption)
                     .font(.system(size: 11, weight: .bold))
                     .kerning(1.4)
                     .foregroundColor(Color(UIColor.secondaryLabel))
-                Text(verbatim: "Рекъезабиял")
+                Text(verbatim: strings.settingsTitle)
                     .font(.system(size: 24, weight: .bold))
                     .foregroundColor(Color(UIColor.label))
             }
             .padding(.horizontal, 2)
 
             group {
-                navRow(icon: "slider.horizontal.3", title: "Хъвай",
+                navRow(icon: "slider.horizontal.3", title: strings.pageInput,
                        value: nil, page: .input)
                 divider
-                navRow(icon: "circle.lefthalf.filled", title: "Тема",
+                navRow(icon: "circle.lefthalf.filled", title: strings.pageTheme,
                        value: themeTitle(model.settings.theme), page: .theme)
                 divider
-                navRow(icon: "text.book.closed", title: "Словарь",
+                navRow(icon: "text.book.closed", title: strings.pageDictionary,
                        value: "\(wordCount)", page: .dictionary)
             }
 
             group {
-                navRow(icon: "info.circle", title: "Клавиатураялъул хӀакъалъулъ",
-                       value: "1.0.0", page: .about)
+                navRow(icon: "info.circle", title: strings.pageAbout,
+                       value: BundleInfo.marketingVersion, page: .about)
             }
         }
     }
@@ -193,71 +197,81 @@ struct SettingsPanelView: View {
     /// has — every control maps 1:1 to a `KeyboardSettings` field.
     private var inputPage: some View {
         Group {
-            // Native-language (Avar) titles stay primary and are never
-            // localized; the small explanatory subtitles come from the
-            // extension's string catalog and follow the user's system
+            // Native-language titles come from the keyboard definition and
+            // are never localized; the small explanatory subtitles come from
+            // the extension's string catalog and follow the user's system
             // language (en fallback).
-            sectionLabel("Раскладка — " + String(localized: "layout"))
-            group {
-                layoutStyleRow(.threeRow, title: "3 мухъ",
-                               subtitle: String(localized: "three letter rows"))
-                divider
-                layoutStyleRow(.fourRow, title: "4 мухъ",
-                               subtitle: String(localized: "four rows — digraphs on top"))
+            // The layout section exists only when the definition offers
+            // a choice of styles.
+            if Self.layout.showsSelector {
+                sectionLabel(strings.sectionLayout + " — " + String(localized: "layout"))
+                group {
+                    ForEach(Array(Self.layout.styles.enumerated()), id: \.offset) { index, spec in
+                        if index > 0 { divider }
+                        layoutStyleRow(spec.id, title: spec.settingsTitle,
+                                       subtitle: spec.settingsSubtitle)
+                    }
+                }
             }
 
-            sectionLabel("Малълъиял — " + String(localized: "suggestions"))
+            sectionLabel(strings.sectionSuggestions + " — " + String(localized: "suggestions"))
             group {
-                toggleRow(title: "РагӀабазул малълъиял",
+                toggleRow(title: strings.wordSuggestions,
                           subtitle: String(localized: "Word suggestions"),
                           binding: binding(\.wordSuggestions))
                 divider
-                toggleRow(title: "Хадусеб рагӀиялъул малълъи",
+                toggleRow(title: strings.nextWordSuggestion,
                           subtitle: String(localized: "Next-word suggestion"),
                           binding: binding(\.nextWordSuggestions))
                 divider
-                toggleRow(title: "Малълъиялда хадуб пробел",
+                toggleRow(title: strings.autoSpace,
                           subtitle: String(localized: "Space after accepting a suggestion"),
                           binding: binding(\.autoSpaceAfterSuggestion))
             }
 
-            sectionLabel("Клавишаби")
+            sectionLabel(strings.sectionKeys)
             group {
-                toggleRow(title: "КӀиго пробел — тӀанкӀ",
+                toggleRow(title: strings.doubleSpacePeriod,
                           subtitle: String(localized: "Double space types a period"),
                           binding: binding(\.doubleSpacePeriod))
                 divider
-                toggleRow(title: "Гьоркьоб бакӀалъул курсор",
+                toggleRow(title: strings.spaceCursor,
                           subtitle: String(localized: "Cursor control with the space bar"),
                           binding: binding(\.spaceCursor))
                 divider
-                toggleRow(title: "Гьоркьоб бакӀалда «авар»",
-                          subtitle: String(localized: "Show «авар» on the space bar"),
+                toggleRow(title: strings.spaceCornerToggle,
+                          subtitle: strings.spaceCornerToggleSubtitle,
                           binding: binding(\.spaceLabel))
             }
 
-            sectionLabel("Лъазаби — " + String(localized: "learning"))
+            sectionLabel(strings.sectionLearning + " — " + String(localized: "learning"))
             group {
-                learnSpeedRow(.fast, title: "Хехаб",
-                              subtitle: "1 нухалъ · " + String(localized: "after 1 use"))
+                learnSpeedRow(.fast, title: strings.learnFast,
+                              subtitle: strings.learnUses(KeyboardSettings.LearnSpeed.fast.minUses)
+                                  + " · " + String(localized: "after 1 use"))
                 divider
-                learnSpeedRow(.normal, title: "ГӀадатаб",
-                              subtitle: "3 нухалъ · " + String(localized: "after 3 uses"))
+                learnSpeedRow(.normal, title: strings.learnNormal,
+                              subtitle: strings.learnUses(KeyboardSettings.LearnSpeed.normal.minUses)
+                                  + " · " + String(localized: "after 3 uses"))
                 divider
-                learnSpeedRow(.conservative, title: "Хьадараб",
-                              subtitle: "5 нухалъ · " + String(localized: "after 5 uses"))
+                learnSpeedRow(.conservative, title: strings.learnSlow,
+                              subtitle: strings.learnUses(KeyboardSettings.LearnSpeed.conservative.minUses)
+                                  + " · " + String(localized: "after 5 uses"))
             }
 
-            sectionLabel("БатӀиял хӀарпал (Ӏ, кь, къ…) — " + String(localized: "long press"))
+            sectionLabel(strings.sectionLongPress + " — " + String(localized: "long press"))
             group {
-                calloutDelayRow(.short, title: "Къокъаб лъалхъи",
-                                subtitle: "0,2 с · " + String(localized: "short delay"))
+                calloutDelayRow(.short, title: strings.calloutShort,
+                                subtitle: strings.calloutDuration(KeyboardSettings.CalloutDelay.short.seconds)
+                                    + " · " + String(localized: "short delay"))
                 divider
-                calloutDelayRow(.normal, title: "ГӀадатаб лъалхъи",
-                                subtitle: "0,3 с · " + String(localized: "normal delay"))
+                calloutDelayRow(.normal, title: strings.calloutNormal,
+                                subtitle: strings.calloutDuration(KeyboardSettings.CalloutDelay.normal.seconds)
+                                    + " · " + String(localized: "normal delay"))
                 divider
-                calloutDelayRow(.long, title: "Халатаб лъалхъи",
-                                subtitle: "0,45 с · " + String(localized: "long delay"))
+                calloutDelayRow(.long, title: strings.calloutLong,
+                                subtitle: strings.calloutDuration(KeyboardSettings.CalloutDelay.long.seconds)
+                                    + " · " + String(localized: "long delay"))
             }
         }
     }
@@ -282,15 +296,15 @@ struct SettingsPanelView: View {
 
     private var themePage: some View {
         Group {
-            sectionLabel("Тема — " + String(localized: "theme"))
+            sectionLabel(strings.sectionTheme + " — " + String(localized: "theme"))
             group {
-                themeRow(.system, title: "Системаялъул",
+                themeRow(.system, title: strings.themeSystem,
                          subtitle: String(localized: "Match the system"))
                 divider
-                themeRow(.light, title: "КанчӀаб",
+                themeRow(.light, title: strings.themeLight,
                          subtitle: String(localized: "Light theme"))
                 divider
-                themeRow(.dark, title: "БецӀаб",
+                themeRow(.dark, title: strings.themeDark,
                          subtitle: String(localized: "Dark theme"))
             }
         }
@@ -309,9 +323,9 @@ struct SettingsPanelView: View {
 
     private func themeTitle(_ theme: KeyboardSettings.Theme) -> String {
         switch theme {
-        case .system: return "Системаялъул"
-        case .light:  return "КанчӀаб"
-        case .dark:   return "БецӀаб"
+        case .system: return strings.themeSystem
+        case .light:  return strings.themeLight
+        case .dark:   return strings.themeDark
         }
     }
 
@@ -321,7 +335,7 @@ struct SettingsPanelView: View {
                 Text(verbatim: "\(wordCount)")
                     .font(.system(size: 36, weight: .bold))
                     .foregroundColor(Color(UIColor.label))
-                Text(verbatim: "лъазарурал рагӀаби")
+                Text(verbatim: strings.learnedWordsCaption)
                     .font(.system(size: 13))
                     .foregroundColor(Color(UIColor.secondaryLabel))
             }
@@ -329,7 +343,7 @@ struct SettingsPanelView: View {
 
             if words.isEmpty {
                 group {
-                    Text(verbatim: "Жиги рагӀаби гьечӀо")
+                    Text(verbatim: strings.noWordsYet)
                         .font(.system(size: 14))
                         .foregroundColor(Color(UIColor.secondaryLabel))
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -365,7 +379,7 @@ struct SettingsPanelView: View {
                     Button {
                         showsDeleteAllSheet = true
                     } label: {
-                        Text(verbatim: "Киналго лъазарурал рагӀаби гилдизе")
+                        Text(verbatim: strings.deleteAll)
                             .font(.system(size: 15, weight: .medium))
                             .foregroundColor(.red)
                             .frame(maxWidth: .infinity)
@@ -380,7 +394,7 @@ struct SettingsPanelView: View {
     private var aboutPage: some View {
         Group {
             VStack(spacing: 8) {
-                Text(verbatim: "А")
+                Text(verbatim: strings.aboutInitial)
                     .font(.system(size: 28, weight: .heavy))
                     .foregroundColor(.white)
                     .frame(width: 56, height: 56)
@@ -390,10 +404,10 @@ struct SettingsPanelView: View {
                                        startPoint: .topLeading, endPoint: .bottomTrailing),
                         in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 VStack(spacing: 2) {
-                    Text(verbatim: "Авар клавиатура")
+                    Text(verbatim: strings.aboutTitle)
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(Color(UIColor.label))
-                    Text(verbatim: "Версия 1.0.0 · LekiTech")
+                    Text(verbatim: strings.aboutByline(BundleInfo.marketingVersion))
                         .font(.system(size: 12))
                         .foregroundColor(Color(UIColor.secondaryLabel))
                 }
@@ -412,7 +426,7 @@ struct SettingsPanelView: View {
                 .onTapGesture { showsDeleteAllSheet = false }
 
             VStack(spacing: 0) {
-                Text(verbatim: "Киналго лъазарурал рагӀаби гилдизеищ?")
+                Text(verbatim: strings.deleteAllQuestion)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(Color(UIColor.label))
                     .multilineTextAlignment(.center)
@@ -425,7 +439,7 @@ struct SettingsPanelView: View {
                     onResetAll?()
                     refreshWords()
                 } label: {
-                    Text(verbatim: "Гилдизе")
+                    Text(verbatim: strings.delete)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.red)
                         .frame(maxWidth: .infinity)
@@ -437,7 +451,7 @@ struct SettingsPanelView: View {
                 Button {
                     showsDeleteAllSheet = false
                 } label: {
-                    Text(verbatim: "Гуро")
+                    Text(verbatim: strings.no)
                         .font(.system(size: 16))
                         .foregroundColor(.spAccent)
                         .frame(maxWidth: .infinity)

@@ -75,6 +75,7 @@
 		E2CB41D9E0000000000000A1 /* Exceptions for "AvarKeyboardExtension" folder in "AvarKeyboard" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				AvarIdentity.swift,
 				ContributionBridge.swift,
 			);
 			target = E27822C52FF1F09E00255D0E /* AvarKeyboard */;

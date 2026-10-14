@@ -43,6 +43,14 @@ let package = Package(
                 "KeyboardView.swift",
                 "SettingsPanelView.swift",
                 "EmojiData.swift",
+                // Phase 1b: the definition boundary and the Avar product
+                // definition the engine now reads everything through.
+                "KeyboardDefinition.swift",
+                "NormalizationProfile.swift",
+                "AvarDefinition.swift",
+                "AvarLayout.swift",
+                "AvarStrings.swift",
+                "AvarIdentity.swift",
             ]
         ),
         .testTarget(

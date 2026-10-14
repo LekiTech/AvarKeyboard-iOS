@@ -2,7 +2,7 @@
 > Lezgi Keyboard project, whose engine this app reuses. The architecture
 > and behavior described here apply to Avar Keyboard as well, with two
 > caveats: the letter rows and long-press callouts are now the fixed Avar
-> layout in `KeyboardLayout.swift`, and the hard-sign position option
+> layout in `AvarLayout.swift`, and the hard-sign position option
 > (`LayoutVariant`, the «ъ» quick-switch menu and its settings page) has
 > been removed. Language examples and names in the text still refer to
 > Lezgi; the remaining Avar resources are tracked by TODO(Avar) markers

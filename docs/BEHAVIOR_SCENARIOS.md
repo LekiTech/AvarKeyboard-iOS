@@ -2,7 +2,7 @@
 > Lezgi Keyboard project, whose engine this app reuses. The architecture
 > and behavior described here apply to Avar Keyboard as well, with two
 > caveats. First, the letter rows, symbol pages, and long-press callouts
-> are now the Avar layouts in `KeyboardLayout.swift` — two switchable
+> are now the Avar layouts in `AvarLayout.swift` — two switchable
 > styles (`LayoutStyle.threeRow`/`.fourRow`, keyboard settings →
 > «Раскладка»), each with its own geometry in `KeyboardLayout.Metrics`
 > (250pt vs 304pt keyboard height, emoji grid included), so the fixed

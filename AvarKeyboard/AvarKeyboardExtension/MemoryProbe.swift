@@ -24,7 +24,8 @@ import os.log
 enum MemoryProbe {
 
     private static let logger = Logger(
-        subsystem: Bundle.main.bundleIdentifier ?? "AvarKeyboardExtension",
+        subsystem: Bundle.main.bundleIdentifier
+            ?? KeyboardDefinition.current.data.diagnosticsSubsystem,
         category: "kb-mem")
 
     /// Highest footprint seen in this process, so a spike that is released

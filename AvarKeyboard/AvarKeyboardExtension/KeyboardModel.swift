@@ -29,14 +29,16 @@ final class KeyboardModel: ObservableObject {
     @Published var showsKeyboardName: Bool = false
     /// The in-keyboard settings panel (opened by the gear key) is visible.
     @Published var showsSettings: Bool = false
-    /// Which letter grid is active (three rows, or four with the digraph
-    /// row on top); user-selectable in the settings panel, persisted in
-    /// the extension's own UserDefaults. The suggestion engine never
-    /// reads it — both styles insert identical text.
-    @Published var layoutStyle: LayoutStyle =
-        LayoutStyle(rawValue: UserDefaults.standard.string(forKey: KeyboardModel.layoutStyleKey) ?? "") ?? .threeRow
+    /// Which letter grid is active — one of the styles the keyboard
+    /// definition offers; user-selectable in the settings panel when it
+    /// offers several, persisted in the extension's own UserDefaults under
+    /// the definition's key. A stored value the definition does not offer
+    /// falls back to its default. The suggestion engine never reads it —
+    /// every style inserts identical text.
+    @Published var layoutStyle: LayoutStyle = KeyboardDefinition.current.layout.resolve(
+        UserDefaults.standard.string(forKey: KeyboardModel.layoutStyleKey))
 
-    private static let layoutStyleKey = "layoutStyle"
+    private static let layoutStyleKey = KeyboardDefinition.current.layout.persistenceKey
 
     func setLayoutStyle(_ style: LayoutStyle) {
         layoutStyle = style
@@ -270,15 +272,15 @@ final class KeyboardModel: ObservableObject {
     /// Shared display form for every suggestion type — learned, dictionary,
     /// and idle-bar fallback words all go through here.
     ///
-    /// Project-wide palochka convention: everything the user SEES carries
-    /// the typed uppercase palochka Ӏ (U+04C0) — key labels, suggestions,
-    /// inserted text, the saved-words page — while every stored row is
-    /// canonical (ӏ, U+04CF, via `Normalization.canonical`). This is the
-    /// one-way presentation mapping; it is safe because every storage
-    /// boundary (learn, lookup, delete, dedup) re-canonicalizes its input,
-    /// so a round trip Ӏ → ӏ → Ӏ never loses a word.
+    /// The definition's presentation convention for the palochka (Avar:
+    /// everything the user SEES carries Ӏ U+04C0 while every stored row is
+    /// canonical ӏ U+04CF). One-way and safe: every storage boundary (learn,
+    /// lookup, delete, dedup) re-canonicalizes its input, so a round trip
+    /// never loses a word.
+    private static let text = KeyboardDefinition.current.text
+
     private static func visiblePalochka(_ word: String) -> String {
-        word.replacingOccurrences(of: "ӏ", with: "Ӏ")
+        text.visibleForm(word, canonicalPalochka: Normalization.palochka)
     }
 
     /// A typed prefix dictates its own case (capitalized prefix → capitalized
@@ -295,11 +297,11 @@ final class KeyboardModel: ObservableObject {
                 : word
         }
         guard prefix.first?.isUppercase == true else { return word }
-        // The palochka is caseless by convention but its typed form Ӏ
-        // (U+04C0) is category Lu, so it must not vote in the all-caps
-        // test: «ЦӀ» is a capitalized digraph, not an ALL-CAPS prefix.
-        // Only the case-bearing letters decide.
-        let caseBearing = prefix.filter { $0 != "Ӏ" && $0 != "ӏ" }
+        // Case-neutral letters never vote in the all-caps test (Avar: the
+        // palochka, whose typed form Ӏ is category Lu — «ЦӀ» is a
+        // capitalized digraph, not an ALL-CAPS prefix). Only the
+        // case-bearing letters decide.
+        let caseBearing = prefix.filter { !Self.text.caseNeutral.contains($0) }
         let allCaps = caseBearing.count >= 2 && caseBearing == caseBearing.uppercased()
         return allCaps ? word.uppercased()
                        : word.prefix(1).uppercased() + word.dropFirst()
@@ -467,7 +469,8 @@ final class KeyboardModel: ObservableObject {
     /// single byte reaches the App Group. See ContributionExporter.swift.
     func runContributionBridgeIfEnabled(hasFullAccess: Bool) {
         guard Contribution.isEnabled,
-              let bridge = ContributionBridge.productionDirectory else { return }
+              let bridge = ContributionBridge.productionDirectory(
+                  appGroupID: KeyboardDefinition.current.data.appGroupID) else { return }
         learned?.runContributionBridge(at: bridge, hasFullAccess: hasFullAccess)
     }
 

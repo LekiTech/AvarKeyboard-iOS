@@ -234,7 +234,10 @@ final class KeyboardModelCharacterizationTests: XCTestCase {
 final class LanguageConstantsCharacterizationTests: XCTestCase {
 
     func testAppGroupIdentifier() {
-        XCTAssertEqual(ContributionBridge.appGroupID, "group.org.lekitech.avarkeyboard")
+        // Phase 1b moved the constant out of ContributionBridge into the
+        // product (shared with the app) and the definition.
+        XCTAssertEqual(AvarIdentity.appGroupID, "group.org.lekitech.avarkeyboard")
+        XCTAssertEqual(KeyboardDefinition.current.data.appGroupID, "group.org.lekitech.avarkeyboard")
     }
 
     private static let extensionDirectory = URL(fileURLWithPath: #filePath)
@@ -356,7 +359,8 @@ final class LanguageConstantsCharacterizationTests: XCTestCase {
         ]
         XCTAssertEqual(EmojiData.categories.count, expected.count)
         for (category, (title, icon, count, digest)) in zip(EmojiData.categories, expected) {
-            XCTAssertEqual(category.title, title)
+            // Phase 1b: titles come from the definition, keyed by category id.
+            XCTAssertEqual(KeyboardDefinition.current.emojiCategoryTitles[category.id], title)
             XCTAssertEqual(category.icon, icon, title)
             XCTAssertEqual(category.emojis.count, count, title)
             let joined = category.emojis.joined(separator: "\u{1F}")

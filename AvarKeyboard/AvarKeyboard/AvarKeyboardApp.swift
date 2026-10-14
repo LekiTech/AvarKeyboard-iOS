@@ -17,7 +17,8 @@ struct AvarKeyboardApp: App {
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active,
-                  let bridge = ContributionBridge.productionDirectory else { return }
+                  let bridge = ContributionBridge.productionDirectory(
+                      appGroupID: AvarIdentity.appGroupID) else { return }
             // Passive by design: batch files exist only if the keyboard's
             // exporter — behind its build flag, user consent, and Full
             // Access — ever wrote any. Today it cannot, so this scans an

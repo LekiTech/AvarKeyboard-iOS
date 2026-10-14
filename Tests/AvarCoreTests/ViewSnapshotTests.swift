@@ -202,6 +202,14 @@ final class ViewSnapshotTests: XCTestCase {
     private static let width: CGFloat = 393
     private var recording: Bool { ProcessInfo.processInfo.environment["RECORD_SNAPSHOTS"] == "1" }
 
+    /// The settings panel shows the bundle's marketing version; the test
+    /// runner's bundle is not the keyboard's, so the released extension's
+    /// value (CFBundleShortVersionString 1.0.0, BASELINE.md §3) is fixed here.
+    nonisolated override func setUp() {
+        super.setUp()
+        BundleInfo.marketingVersion = "1.0.0"
+    }
+
     func freshModel(style: LayoutStyle,
                     recentEmojis: [String] = [],
                     learnedWords: [String] = [],

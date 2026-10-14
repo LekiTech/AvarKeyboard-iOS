@@ -13,7 +13,7 @@
 //  drift apart on the format. The keyboard-side exporter lives in
 //  ContributionExporter.swift (extension target only). Every function
 //  takes the bridge directory as a parameter; the production directory is
-//  the App Group container exposed by `productionDirectory`.
+//  the App Group container exposed by `productionDirectory(appGroupID:)`.
 //
 //  DESIGN RULES
 //    * No shared writable database. Each file has exactly one writer:
@@ -72,20 +72,17 @@ struct ContributionBatchFile: Codable, Equatable {
 
 enum ContributionBridge {
 
-    /// This keyboard's dedicated App Group. Every keyboard in the family
-    /// gets its OWN group (group.org.lekitech.avarkeyboard, …) — bridges
-    /// are never shared across keyboards, so one keyboard's contribution
-    /// data is structurally invisible to another's. The released bundle
-    /// identifiers stay exactly as shipped; only the group is new.
-    static let appGroupID = "group.org.lekitech.avarkeyboard"
-
     /// The production bridge directory: the App Group container both
-    /// targets are entitled to. Nil when the entitlement is absent — unit
-    /// tests, which inject their own directories everywhere. Nothing
-    /// reads or writes through this while `Contribution.isEnabled` is
-    /// false: the keyboard's exporter is triple-gated, and the app's
-    /// pickup only ever sees files that exporter wrote.
-    static var productionDirectory: URL? {
+    /// targets are entitled to. Every keyboard in the family has its OWN
+    /// group (group.org.lekitech.avarkeyboard, …), supplied by the product
+    /// — bridges are never shared across keyboards, so one keyboard's
+    /// contribution data is structurally invisible to another's. Nil when
+    /// the entitlement is absent — unit tests, which inject their own
+    /// directories everywhere. Nothing reads or writes through this while
+    /// `Contribution.isEnabled` is false: the keyboard's exporter is
+    /// triple-gated, and the app's pickup only ever sees files that
+    /// exporter wrote.
+    static func productionDirectory(appGroupID: String) -> URL? {
         FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID)
     }
 

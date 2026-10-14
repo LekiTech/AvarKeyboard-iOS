@@ -29,19 +29,21 @@ GROUP_MAP = {
     "Flags": "flags",
 }
 
-# category key -> (Avar title, SF Symbol icon)
+# category key -> SF Symbol icon. Section titles are language data and live
+# in each keyboard's definition (Avar: AvarStrings.emojiCategoryTitles),
+# keyed by these ids.
 CATEGORIES = [
-    ("smileys",  "Гьурмал ва гӀадамал", "face.smiling"),
-    ("nature",   "ТӀабигӀат",          "pawprint"),
-    ("food",     "Квен",            "fork.knife"),
-    ("activity", "ХӀаял",        "soccerball"),
-    ("travel",   "Сапар",          "car"),
-    ("objects",  "Жал",           "lightbulb"),
-    ("symbols",  "ГӀаламатал",         "heart"),
-    ("flags",    "Байрахъал",         "flag"),
+    ("smileys",  "face.smiling"),
+    ("nature",   "pawprint"),
+    ("food",     "fork.knife"),
+    ("activity", "soccerball"),
+    ("travel",   "car"),
+    ("objects",  "lightbulb"),
+    ("symbols",  "heart"),
+    ("flags",    "flag"),
 ]
 
-buckets = {key: [] for key, _, _ in CATEGORIES}
+buckets = {key: [] for key, _ in CATEGORIES}
 group = None
 line_re = re.compile(
     r"^([0-9A-F ]+?)\s*;\s*fully-qualified\s*#\s*(\S+)\s+E(\d+\.\d+)\s"
@@ -72,7 +74,7 @@ lines = [
     "//",
     "",
     "struct EmojiCategory {",
-    "    let title: String   // section header in the grid",
+    "    let id: String      // stable key; the keyboard definition supplies the section title",
     "    let icon: String    // SF Symbol shown in the bottom category bar",
     "    let emojis: [String]",
     "}",
@@ -82,9 +84,9 @@ lines = [
     "    static let categories: [EmojiCategory] = [",
 ]
 
-for key, title, icon in CATEGORIES:
+for key, icon in CATEGORIES:
     emojis = buckets[key]
-    lines.append(f'        EmojiCategory(title: "{title}", icon: "{icon}", emojis: [')
+    lines.append(f'        EmojiCategory(id: "{key}", icon: "{icon}", emojis: [')
     for i in range(0, len(emojis), 16):
         chunk = ",".join(f'"{e}"' for e in emojis[i:i + 16])
         lines.append(f"            {chunk},")
@@ -94,6 +96,6 @@ lines += ["    ]", "}", ""]
 OUT.write_text("\n".join(lines), encoding="utf-8")
 
 total = sum(len(v) for v in buckets.values())
-for key, title, _ in CATEGORIES:
+for key, _ in CATEGORIES:
     print(f"{key:10} {len(buckets[key]):5}")
 print(f"{'total':10} {total:5}")

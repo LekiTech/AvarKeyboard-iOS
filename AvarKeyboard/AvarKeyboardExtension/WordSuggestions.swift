@@ -4,7 +4,7 @@
 //
 //  Created by Enver Eskendarov on 6/28/26.
 //
-//  Reader for the bundled, read-only `avar_words.sqlite` artifact.
+//  Reader for the bundled, read-only dictionary artifact (`<wordsArtifact>.sqlite`).
 //  Schema, metadata and the base_score contract: docs/ARTIFACT_CONTRACT.md.
 //
 
@@ -27,6 +27,10 @@ final class WordSuggestions {
     /// Newest artifact schema this reader understands.
     static let supportedSchemaVersion = 1
 
+    /// Resource name and expected `artifact` meta value, from the keyboard
+    /// definition (Avar: "avar_words").
+    static var artifactName: String { KeyboardDefinition.current.data.wordsArtifact }
+
     /// Whether the artifact carries a `base_score` column. False for the
     /// pre-metadata artifact, in which case ordering falls back to length
     /// alone — exactly the released behavior.
@@ -34,14 +38,14 @@ final class WordSuggestions {
 
     init?(databaseURL: URL? = nil) {
         let url = databaseURL ?? Bundle(for: WordSuggestions.self)
-            .url(forResource: "avar_words", withExtension: "sqlite")
+            .url(forResource: Self.artifactName, withExtension: "sqlite")
         guard let url else { return nil }
         guard sqlite3_open_v2(url.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
             sqlite3_close(db)
             return nil
         }
 
-        metadata = ArtifactMetadata.read(from: db, expecting: "avar_words")
+        metadata = ArtifactMetadata.read(from: db, expecting: Self.artifactName)
         // An artifact from the future is treated as absent: reading the
         // dictionary wrongly is worse than having no dictionary.
         if let metadata, metadata.minReaderSchema > Self.supportedSchemaVersion {

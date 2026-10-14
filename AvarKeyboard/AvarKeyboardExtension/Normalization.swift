@@ -2,10 +2,14 @@
 //  Normalization.swift
 //  AvarKeyboardExtension
 //
-//  The canonical form of an Avar token — one definition for the bundled
+//  The canonical form of a token — one definition for the bundled
 //  dictionary, the static bigrams, learned words, learned bigrams, future
 //  contribution batches, and future server processing. A word must be the
 //  same word in all six places or none of them can be joined.
+//
+//  The pipeline and every engine-contract gate live here; the script and
+//  language data (palochka, lookalikes, homoglyphs, digraph tails) come
+//  from the keyboard's NormalizationProfile (NormalizationProfile.swift).
 //
 //  This is the runtime half of a contract whose other half is
 //  `normalize()` in scripts/build_dictionaries.py. The two MUST change
@@ -17,55 +21,29 @@ import Foundation
 
 enum Normalization {
 
-    /// Bumped when the rules below change. Artifacts record the version
-    /// they were built with, so a mismatch is detectable rather than silent.
-    static let version = 1
+    /// The current keyboard's profile, read once per process.
+    static let profile: NormalizationProfile = KeyboardDefinition.current.normalization
 
-    /// ӏ CYRILLIC SMALL LETTER PALOCHKA (U+04CF) — the one true palochka.
-    static let palochka: Character = "ӏ"
+    /// Bumped when the rules change. Artifacts record the version they were
+    /// built with, so a mismatch is detectable rather than silent.
+    static var version: Int { profile.version }
 
-    /// Characters users and source corpora substitute for the palochka.
-    /// Repaired only inside tokens that contain Cyrillic, so a genuine
-    /// Latin borrowing keeps its "i".
-    /// Deliberately excludes the digit 1 and the pipe: this keyboard types
-    /// real digits, and `isLearnable` rejects digit-bearing tokens, so
-    /// repairing «гаф1» into «гафӏ» would turn a token the store must
-    /// refuse into one it accepts. Corpus sources that use 1-as-palochka
-    /// are a preprocessing concern, not part of the canonical contract —
-    /// and the shipped dictionary contains no such row.
-    private static let palochkaLookalikes: Set<Character> = [
-        "I", "l", "i",
-        "І",   // U+0406 CYRILLIC CAPITAL LETTER BYELORUSSIAN-UKRAINIAN I
-        "і",   // U+0456 its lowercase — found 34 times in the shipped dictionary
-        "Ӏ",   // U+04C0 uppercase palochka
-    ]
-
-    /// Latin letters visually identical to a Cyrillic letter. Applied only
-    /// to otherwise-Cyrillic tokens.
-    private static let latinToCyrillic: [Character: Character] = [
-        "a": "а", "c": "с", "e": "е", "o": "о", "p": "р", "x": "х",
-        "y": "у", "k": "к", "m": "м", "t": "т", "b": "ь", "h": "н",
-    ]
+    /// The canonical palochka (U+04CF for Dagestanian Cyrillic).
+    static var palochka: Character? { profile.palochka }
 
     /// A digraph tail extends the previous letter instead of counting as its
-    /// own, so "цӏ" and "къ" are ONE letter. Derived from the layout's
-    /// long-press alternates so the rule has a single source. The layout
-    /// stores callouts with the typed capital palochka (Ӏ, U+04C0), while
-    /// counting always runs on canonical (lowercased) tokens — so each tail
-    /// is lowercased on the way into the set.
-    static let digraphTails: Set<Character> = {
-        var tails = Set<Character>()
-        for alternates in KeyboardLayout.callouts.values {
-            for alternate in alternates where alternate.count == 2 {
-                if let tail = alternate.lowercased().last { tails.insert(tail) }
-            }
-        }
-        tails.insert("ъ")   // the hard sign is a tail even without a callout
-        return tails
-    }()
+    /// own, so "цӏ" and "къ" are ONE letter. Declared by the profile; the
+    /// definition tests check it covers every two-character callout.
+    static let digraphTails: Set<Character> = profile.digraphTails
 
-    private static func containsCyrillic(_ token: String) -> Bool {
-        token.unicodeScalars.contains { (0x0400...0x04FF).contains($0.value) }
+    private static let repairScripts = profile.repairScripts
+    private static let palochkaLookalikes = profile.palochkaLookalikes
+    private static let homoglyphs = profile.homoglyphs
+
+    private static func needsRepair(_ token: String) -> Bool {
+        token.unicodeScalars.contains { scalar in
+            repairScripts.contains { $0.contains(scalar.value) }
+        }
     }
 
     /// The canonical form. Idempotent by construction:
@@ -78,11 +56,13 @@ enum Normalization {
         result = result.trimmingCharacters(in: .whitespacesAndNewlines)
         // 3. Lowercase — this alone maps Ӏ (U+04C0) to ӏ (U+04CF).
         result = result.lowercased()
-        // 4-5. Repair lookalikes, but only where the token is Cyrillic.
-        if containsCyrillic(result) {
+        // 4-5. Repair lookalikes, but only where the token is in a repair
+        //      script (Cyrillic for the built-in profile).
+        if needsRepair(result) {
+            let palochka = profile.palochka
             result = String(result.map { ch in
-                if palochkaLookalikes.contains(ch) { return palochka }
-                return latinToCyrillic[ch] ?? ch
+                if let palochka, palochkaLookalikes.contains(ch) { return palochka }
+                return homoglyphs[ch] ?? ch
             })
         }
         // 6. NFC again so the function is idempotent whatever the repairs did.
@@ -113,14 +93,16 @@ enum Normalization {
     static func isValidToken(_ token: String) -> Bool {
         // Scalars, not Characters: Python's len() counts code points, and
         // the two halves of the contract must measure length identically.
-        // On canonical (NFC) Avar text the two counts agree anyway; they
+        // On canonical (NFC) Cyrillic text the two counts agree anyway; they
         // diverge only on combining-mark sequences, exactly where an
         // implicit disagreement would hide.
         guard !token.isEmpty, token.unicodeScalars.count <= 64 else { return false }
         guard !token.contains(where: \.isWhitespace) else { return false }
         guard !token.contains(where: \.isNumber) else { return false }
         guard !token.contains("@"), !token.contains("/"), !token.contains(".") else { return false }
-        guard !token.contains(where: { $0.isASCII && $0.isLetter }) else { return false }
+        if profile.rejectsASCIILetters {
+            guard !token.contains(where: { $0.isASCII && $0.isLetter }) else { return false }
+        }
         // No control or format characters. Controls (Cc) include U+001F,
         // which the contribution outbox uses to join bigram keys — a token
         // that could carry it would make that encoding ambiguous. Formats

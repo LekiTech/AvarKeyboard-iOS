@@ -100,6 +100,8 @@ struct KeyboardView: View {
 
     private let calloutOptionWidth: CGFloat = 44
 
+    private static let strings = KeyboardDefinition.current.strings
+
     /// Per-style vertical geometry; the view re-renders when the style
     /// changes because `model` is observed.
     private var metrics: KeyboardLayout.Metrics {
@@ -189,14 +191,15 @@ struct KeyboardView: View {
     /// long-press on a learned word. Stays entirely inside the keyboard view.
     private func deleteConfirmBar(word: String) -> some View {
         HStack(spacing: 12) {
-            // Keyboard UI speaks Avar: «стереть слово?» — «нет» / «стереть»
-            Text(verbatim: "“\(word)” гилдизеищ?")
+            // Keyboard UI speaks the keyboard's language: «delete word?» —
+            // «no» / «delete», all from the definition
+            Text(verbatim: Self.strings.deleteWordQuestion(word))
                 .font(.system(size: 15))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Spacer(minLength: 0)
-            confirmPill("Гуро", emphasized: false) { pendingDeleteWord = nil }
-            confirmPill("Гилдизе", emphasized: true) {
+            confirmPill(Self.strings.no, emphasized: false) { pendingDeleteWord = nil }
+            confirmPill(Self.strings.delete, emphasized: true) {
                 pendingDeleteWord = nil
                 onSuggestionDelete?(word)
             }
@@ -365,7 +368,9 @@ struct KeyboardView: View {
     }
 
     private func emojiSectionTitle(for category: Int) -> String {
-        category == emojiRecentsID ? "Ахирисел" : EmojiData.categories[category].title
+        category == emojiRecentsID
+            ? Self.strings.emojiRecents
+            : KeyboardDefinition.current.emojiCategoryTitles[EmojiData.categories[category].id] ?? ""
     }
 
     private var emojiPage: some View {
@@ -429,7 +434,7 @@ struct KeyboardView: View {
         ZStack {
             // Visual layer, no gestures
             HStack(spacing: 0) {
-                Text("АБВ")
+                Text(verbatim: KeyboardDefinition.current.keys.emojiPageLettersKey)
                     .font(.system(size: 15, weight: .medium))
                     .foregroundColor(Color(UIColor.label))
                     .frame(width: 44, height: 36)
@@ -653,8 +658,8 @@ private struct MorphingWordText: View {
                 if quoted { Text(verbatim: "»") }
             }
             // Words too wide for the cell fall back to a plain text with
-            // no morph, shrinking a little before truncating — Dagestanian
-            // words run long, and a slightly smaller whole word beats losing
+            // no morph, shrinking a little before truncating — words in
+            // agglutinative languages run long, and a slightly smaller whole word beats losing
             // its ending to an ellipsis.
             Text(verbatim: quoted ? "«\(displayed)»" : displayed)
                 .lineLimit(1)
@@ -1081,7 +1086,7 @@ private struct KeyButton: View {
         case .space:
             ZStack(alignment: .bottomTrailing) {
                 Color.clear
-                Text("АВАР")
+                Text(verbatim: KeyboardDefinition.current.keys.spaceCornerLabel)
                     .font(.system(size: 10))
                     .foregroundColor(Color(UIColor.systemGray2))
                     .padding(.trailing, 6)
@@ -1091,7 +1096,7 @@ private struct KeyButton: View {
                     .opacity(model.showsKeyboardName || !model.settings.spaceLabel ? 0 : 1)
                 if model.showsKeyboardName {
                     // Keyboard name shown centered right after the keyboard appears
-                    Text("Авар мацӀ")
+                    Text(verbatim: KeyboardDefinition.current.keys.keyboardName)
                         .font(.system(size: 16))
                         .foregroundColor(Color(UIColor.label))
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)

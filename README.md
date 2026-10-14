@@ -6,7 +6,7 @@ of a friendly eagle in a papakha — developed by [LekiTech](https://github.com/
 > **Project status.** This project reuses the engine of the
 > [Lezgi Keyboard](https://github.com/LekiTech) codebase under a new identity
 > (Avar Keyboard, `org.lekitech.avarkeyboard`). The **fixed Avar layout and
-> long-press callouts are in place** (`AvarKeyboardExtension/KeyboardLayout.swift`)
+> long-press callouts are in place** (`AvarKeyboardExtension/AvarLayout.swift`)
 > and the keyboard ships a **63,879-word Avar dictionary** with
 > corpus-derived `base_score` ranking plus a **5,101-pair static bigram
 > artifact**, both versioned artifacts built by

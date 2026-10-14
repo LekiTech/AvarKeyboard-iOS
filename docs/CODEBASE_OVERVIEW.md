@@ -2,7 +2,7 @@
 > Lezgi Keyboard project, whose engine this app reuses. The architecture
 > and behavior described here apply to Avar Keyboard as well, with two
 > caveats. First, the letter rows, symbol pages, and long-press callouts
-> are now the Avar layouts in `KeyboardLayout.swift` — two switchable
+> are now the Avar layouts in `AvarLayout.swift` — two switchable
 > styles (`LayoutStyle.threeRow`/`.fourRow`, keyboard settings →
 > «Раскладка»), each with its own geometry in `KeyboardLayout.Metrics`
 > (250pt vs 304pt keyboard height, emoji grid included), so the fixed
@@ -20,6 +20,28 @@ describes the implementation as it is today — see
 [LOCAL_SUGGESTIONS_ROADMAP.md](LOCAL_SUGGESTIONS_ROADMAP.md) for what is
 planned but not built (roadmap Stages 1–5 are implemented; Stage 6+ are
 not).
+
+## Keyboard definition boundary (General Keyboard, Phase 1)
+
+Since 2026-10-13 every Avar-specific value reaches the engine through one
+`KeyboardDefinition` (`KeyboardDefinition.swift`), bound to
+`AvarDefinition.definition`. Engine files spell no language data; this is
+tested (`DefinitionTests.testEngineFilesSpellNoLanguageData`).
+
+| File | Holds |
+|---|---|
+| `KeyboardDefinition.swift` | Engine types: `KeyboardDefinition`, `LanguageData`, `LayoutCapabilities` / `LayoutStyleSpec` / open `LayoutStyle` ids, `KeyLabels`, `TextConventions`, `KeyboardStrings`, `BundleInfo` |
+| `NormalizationProfile.swift` | Script/language data of the canonical form; built-in `dagestanianCyrillicV1` |
+| `AvarDefinition.swift` | Assembles the Avar definition; binds `KeyboardDefinition.current` |
+| `AvarLayout.swift` | Both Avar styles: rows, number/symbol pages, callouts, metrics, settings names |
+| `AvarStrings.swift` | Every native UI string, key names, return labels, emoji section titles |
+| `AvarIdentity.swift` | App Group id, compiled into the keyboard and the container app |
+
+`KeyboardLayout.swift` keeps the engine side (key types, metrics type,
+case rules, widths, fonts) and reads per-style data from the definition.
+Characterization tests (`CharacterizationTests`, `ViewSnapshotTests` with
+reference images in `Tests/AvarCoreTests/Snapshots/`) pin the persisted
+state and every rendered screen of the released 1.0.0 build.
 
 ## Project rule: documentation stays current
 

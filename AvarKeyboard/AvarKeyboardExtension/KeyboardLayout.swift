@@ -4,17 +4,19 @@
 //
 //  Created by Enver Eskendarov on 6/28/26.
 //
-//  Single source of truth for key definitions, labels, callouts, and sizing.
-//  To add or reorder keys, edit letterRows only.
+//  Engine side of the layout: key types, geometry types, case rules, label
+//  resolution, widths and fonts. The language's rows, callouts, per-style
+//  metrics and key names come from `KeyboardDefinition.current`
+//  (for Avar: AvarLayout.swift and AvarStrings.swift), read here through
+//  the static accessors below.
 //
 
 import SwiftUI
 
 /// What a key does when tapped.
-/// .character("Ӏ") inserts Cyrillic Palochka (U+04C0) — the caseless bar
-/// letter as conventionally typed in Avar text. `lowercased()` maps it to
-/// the lowercase palochka `ӏ` (U+04CF), which is the form the dictionary
-/// lookups and the learning store normalize to.
+/// `.character(s)` inserts `s` exactly as the layout defines it (lowercase;
+/// shift applies at insertion through applyCase). Storage normalizes every
+/// token through the keyboard's NormalizationProfile.
 enum KeyCap: Equatable {
     case character(String)
     case shift
@@ -36,57 +38,41 @@ enum KeyboardPage {
     case letters, numbers, symbols, emoji
 }
 
-/// Which letter grid the user types on — user-selectable in the settings
-/// panel. `.threeRow` is the original layout. `.fourRow` adds ONE digraph
-/// row ABOVE it and changes nothing else: the three existing rows keep
-/// every key exactly in place, so muscle memory transfers and switching
-/// feels like the same keyboard with an extra row.
-enum LayoutStyle: String, CaseIterable {
-    case threeRow, fourRow
-}
-
 enum KeyboardLayout {
 
-    // MARK: - Letter rows (fixed Avar layouts, defined independently)
-    //
-    // The two styles are separate specifications — neither derives from
-    // the other. Shift layers come from applyCase (first letter only), so
-    // «кӏ» previews and inserts «Кӏ», «гь» → «Гь», exactly per the spec.
-    //
-    // ↓↓↓  ADD OR REORDER KEYS HERE ONLY  ↓↓↓
-    private static let threeRowRows: [[KeyCap]] = [
-        ["й","ц","у","к","е","н","г","ш","щ","з","х","ъ"].map { .character($0) },  // 12 keys
-        ["ф","ӏ","в","а","п","р","о","л","д","ж","э"].map { .character($0) },      // 11 keys
-        [.shift]
-            + ["я","ч","с","м","и","т","ь","б","ю"].map { KeyCap.character($0) }
-            + [.backspace],
-    ]
+    private static var layout: LayoutCapabilities { KeyboardDefinition.current.layout }
+    private static var keys: KeyLabels { KeyboardDefinition.current.keys }
 
-    private static let fourRowRows: [[KeyCap]] = [
-        ["гъ","хъ","къ","кӏ","тӏ","цӏ","чӏ","хӏ","гӏ","кь","хь"].map { .character($0) },  // 11 keys
-        ["й","ц","у","к","е","н","г","ш","щ","з","х"].map { .character($0) },              // 11 keys
-        ["ф","лъ","в","а","п","р","о","л","д","ж","э"].map { .character($0) },             // 11 keys
-        [.shift]
-            + ["я","ч","с","м","и","т","гь","б","ю"].map { KeyCap.character($0) }
-            + [.backspace],
-    ]
-    // ↑↑↑  -----------------------------------  ↑↑↑
+    // MARK: - Pages and long-press maps of the current keyboard, per style
 
     static func letterRows(style: LayoutStyle) -> [[KeyCap]] {
-        switch style {
-        case .threeRow: return threeRowRows
-        case .fourRow:  return fourRowRows
-        }
+        layout.spec(for: style).letterRows
     }
+
+    static func numberRows(style: LayoutStyle) -> [[KeyCap]] {
+        layout.spec(for: style).numberRows
+    }
+
+    static func symbolRows(style: LayoutStyle) -> [[KeyCap]] {
+        layout.spec(for: style).symbolRows
+    }
+
+    /// Alternates are inserted as a whole string; the popup auto-prepends
+    /// the base key, so alternates never repeat it. Uppercase variants are
+    /// derived mechanically through applyCase.
+    static func callouts(style: LayoutStyle) -> [String: [String]] {
+        layout.spec(for: style).callouts
+    }
+
+    /// Union of every style's map — the style-blind view the definition
+    /// tests check the normalization profile's digraph tails against.
+    /// Never used for rendering.
+    static let callouts: [String: [String]] = KeyboardDefinition.current.layout.calloutUnion
 
     // MARK: - Vertical geometry per style
 
-    /// The vertical numbers the keyboard is built from. `.threeRow` is the
-    /// original hand-tuned geometry and must stay frozen. `.fourRow` keeps
-    /// the SAME key height and row gap — the familiar rows are not
-    /// compressed at all — and pays for its extra row purely in keyboard
-    /// height: 36 bar + 8 gap + 5×43 keys + 4×11 gaps + the same 1 pt of
-    /// slack the original budget carries = 304.
+    /// The vertical numbers the keyboard is built from; each style of the
+    /// definition carries its own.
     struct Metrics: Equatable {
         let totalHeight: CGFloat
         let keyHeight: CGFloat
@@ -100,137 +86,8 @@ enum KeyboardLayout {
     }
 
     static func metrics(for style: LayoutStyle) -> Metrics {
-        switch style {
-        case .threeRow: return Metrics(totalHeight: 250, keyHeight: 43, rowSpacing: 11,
-                                       emojiRows: 5, emojiCellHeight: 33)
-        case .fourRow:  return Metrics(totalHeight: 304, keyHeight: 43, rowSpacing: 11,
-                                       emojiRows: 6, emojiCellHeight: 36)
-        }
+        layout.spec(for: style).metrics
     }
-
-    // MARK: - Symbol pages, per style
-    //
-    // The 4-row style's symbol pages carry four rows so the keyboard's
-    // vertical geometry never moves when switching ABC ↔ 123: letters and
-    // symbols always have the same row count per style. The extra rows
-    // hold the full currency set and the typographic/math characters from
-    // the long-press inventory — visible AND still on long-press.
-
-    private static let punctuationRow: [KeyCap] =
-        [.symbols, .spacer(0.25)]
-            + [".",",","?","!","'"].map { KeyCap.character($0) }
-            + [.spacer(0.25), .backspace]
-
-    private static let punctuationRowSymbols: [KeyCap] =
-        [.numbers, .spacer(0.25)]
-            + [".",",","?","!","'"].map { KeyCap.character($0) }
-            + [.spacer(0.25), .backspace]
-
-    private static let threeRowNumberRows: [[KeyCap]] = [
-        ["1","2","3","4","5","6","7","8","9","0"].map { .character($0) },
-        ["-","/",":",";","(",")","₽","&","@","\""].map { .character($0) },
-        punctuationRow,
-    ]
-
-    private static let fourRowNumberRows: [[KeyCap]] = [
-        ["1","2","3","4","5","6","7","8","9","0"].map { .character($0) },
-        ["-","/",":",";","(",")","₽","&","@","\""].map { .character($0) },
-        ["$","€","£","¥","￦","°","№","«","»","…"].map { .character($0) },
-        punctuationRow,
-    ]
-
-    private static let threeRowSymbolRows: [[KeyCap]] = [
-        ["[","]","{","}","#","%","^","*","+","="].map { .character($0) },
-        ["_","\\","|","~","<",">","$","€","¥","•"].map { .character($0) },
-        punctuationRowSymbols,
-    ]
-
-    private static let fourRowSymbolRows: [[KeyCap]] = [
-        ["[","]","{","}","#","%","^","*","+","="].map { .character($0) },
-        ["_","\\","|","~","<",">","•","–","—","§"].map { .character($0) },
-        ["≠","≈","‰","∞","¿","¡","’","„","“","”"].map { .character($0) },
-        punctuationRowSymbols,
-    ]
-
-    static func numberRows(style: LayoutStyle) -> [[KeyCap]] {
-        switch style {
-        case .threeRow: return threeRowNumberRows
-        case .fourRow:  return fourRowNumberRows
-        }
-    }
-
-    static func symbolRows(style: LayoutStyle) -> [[KeyCap]] {
-        switch style {
-        case .threeRow: return threeRowSymbolRows
-        case .fourRow:  return fourRowSymbolRows
-        }
-    }
-
-    // MARK: - Long-press callouts, per style
-    // Alternates are inserted as a whole string; the popup auto-prepends
-    // the base key, so alternates never repeat it. Uppercase variants are
-    // derived mechanically: the bubble and the insertion both run the
-    // selected option through applyCase, so «Лъ» offers «Лӏ Ы» from the
-    // same lowercase entries. These maps reproduce the ava-3-rows /
-    // ava-4-rows long-press specification natively: the shared block is
-    // the digraph sets, the accented vowels, and the symbol variants; the
-    // 3-row style adds ӏ→ы (it has a standalone ӏ key), and the 4-row
-    // style adds component access on its digraph keys because standalone
-    // ь, ъ and ӏ have no dedicated keys there. The slash deliberately has
-    // no alternatives.
-    private static let sharedCallouts: [String: [String]] = [
-        // Digraphs on the base letters
-        "ц": ["цӏ"],
-        "к": ["кӏ", "къ", "кь"],
-        "г": ["гӏ", "гъ", "гь"],
-        "х": ["хӏ", "хъ", "хь"],
-        "л": ["лъ", "лӏ"],
-        "ч": ["чӏ"],
-        "т": ["тӏ"],
-        // Vowels: existing alternates first, stress accent appended
-        "а": ["а\u{0301}"],
-        "е": ["ё", "е\u{0301}"],
-        "и": ["ы", "и\u{0301}"],
-        "о": ["о\u{0301}"],
-        "у": ["у\u{0301}"],
-        "э": ["э\u{0301}"],
-        "я": ["я\u{0301}"],
-        "ю": ["ю\u{0301}"],
-        // Symbols
-        "0": ["°"],
-        "₽": ["$", "€", "£", "¥", "￦"],
-        "#": ["№"],
-        ".": ["…"],
-        "%": ["‰", "∞"],
-        "=": ["≠", "≈"],
-        "-": ["•", "–", "—"],
-        "&": ["§"],
-        "?": ["¿"],
-        "!": ["¡"],
-        "'": ["’", "‘", "`"],
-        "\"": ["”", "“", "„", "»", "«"],
-    ]
-
-    static func callouts(style: LayoutStyle) -> [String: [String]] {
-        switch style {
-        case .threeRow:
-            return sharedCallouts.merging(["ӏ": ["ы"]]) { current, _ in current }
-        case .fourRow:
-            return sharedCallouts.merging([
-                "гь": ["ь", "ъ"],
-                "гъ": ["ъ"],
-                "кӏ": ["ӏ"],
-                "лъ": ["лӏ", "ы"],
-            ]) { current, _ in current }
-        }
-    }
-
-    /// Union of both styles' maps — the single style-blind source the
-    /// engine derives its digraph tails from (Normalization, LearnedWords).
-    /// Never used for rendering.
-    static let callouts: [String: [String]] =
-        callouts(style: .fourRow)
-            .merging(callouts(style: .threeRow)) { fourRow, _ in fourRow }
 
     // MARK: - Case helpers
 
@@ -259,12 +116,12 @@ enum KeyboardLayout {
         case .backspace:        return "⌫"
         case .numbers:          return "123"
         case .symbols:          return "#+="
-        case .letters:          return shifted ? "АИУ" : "аиу"
+        case .letters:          return shifted ? keys.lettersKeyShifted : keys.lettersKey
         case .globe:            return "🌐"
         case .emoji:            return "😀"
         case .settings:         return ""    // gear icon, rendered by KeyButton
         case .spacer:           return ""
-        case .space:            return "Гьоркьобакӏ"
+        case .space:            return keys.space
         case .return:           return ""   // ⏎ symbol, drawn by KeyButton
         }
     }
@@ -286,22 +143,11 @@ enum KeyboardLayout {
 
     // MARK: - Return key
 
-    /// Action label for the return key, in Avar, per the layout spec's
-    /// key-name table. An empty label means "show an icon" — the plain
-    /// return key deliberately shows the ⏎ symbol, not a word.
+    /// Action label for the return key, from the definition. An empty
+    /// label means "show an icon" — the plain return key deliberately shows
+    /// the ⏎ symbol, not a word.
     static func returnLabel(for type: UIReturnKeyType) -> String {
-        switch type {
-        case .go:               return "Рагьизе"
-        case .send:             return "Битӏизе"
-        case .done:             return "Лъугӏана"
-        case .next:             return "Хадусеб"
-        case .`continue`:       return "Цебехун"
-        case .join:             return "Цолъизе"
-        case .route:            return "Нух"
-        case .search:           return "Хъирщи"
-        case .emergencyCall:    return "SOS"
-        default:                return ""
-        }
+        keys.returnLabels[type] ?? ""
     }
 
     /// Return-key width in row units, adapted to its label: icons and

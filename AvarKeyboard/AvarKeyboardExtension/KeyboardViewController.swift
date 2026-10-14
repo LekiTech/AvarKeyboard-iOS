@@ -46,7 +46,8 @@ class KeyboardViewController: UIInputViewController {
         #if DEBUG
         // Local quality metrics baseline (Stage 6): visible in Console.app,
         // category "kb-metrics". Debug builds only; nothing is transmitted.
-        Logger(subsystem: Bundle.main.bundleIdentifier ?? "AvarKeyboardExtension",
+        Logger(subsystem: Bundle.main.bundleIdentifier
+            ?? KeyboardDefinition.current.data.diagnosticsSubsystem,
                category: "kb-metrics")
             .log("[kb-metrics] \(self.model.metricsLine(), privacy: .public)")
         #endif

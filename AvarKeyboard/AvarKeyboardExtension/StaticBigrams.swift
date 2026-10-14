@@ -2,7 +2,7 @@
 //  StaticBigrams.swift
 //  AvarKeyboardExtension
 //
-//  Reader for the bundled, read-only `avar_bigrams.sqlite` artifact:
+//  Reader for the bundled, read-only dictionary artifact (`<bigramsArtifact>.sqlite`):
 //  corpus-derived (previous word → next word) weights that give the
 //  dictionary some sense of context.
 //
@@ -24,6 +24,10 @@ final class StaticBigrams {
 
     static let supportedSchemaVersion = 1
 
+    /// Resource name and expected `artifact` meta value, from the keyboard
+    /// definition (Avar: "avar_bigrams").
+    static var artifactName: String { KeyboardDefinition.current.data.bigramsArtifact }
+
     /// True when the artifact holds no pairs at all. The ranking code uses
     /// it to skip every static-context query outright, so an empty artifact
     /// costs nothing on the typing path.
@@ -31,14 +35,14 @@ final class StaticBigrams {
 
     init?(databaseURL: URL? = nil) {
         let url = databaseURL ?? Bundle(for: StaticBigrams.self)
-            .url(forResource: "avar_bigrams", withExtension: "sqlite")
+            .url(forResource: Self.artifactName, withExtension: "sqlite")
         guard let url else { return nil }
         guard sqlite3_open_v2(url.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
             sqlite3_close(db)
             return nil
         }
 
-        metadata = ArtifactMetadata.read(from: db, expecting: "avar_bigrams")
+        metadata = ArtifactMetadata.read(from: db, expecting: Self.artifactName)
         if let metadata, metadata.minReaderSchema > Self.supportedSchemaVersion {
             sqlite3_close(db)
             return nil
