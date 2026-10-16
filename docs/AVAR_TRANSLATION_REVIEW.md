@@ -86,30 +86,10 @@
 | 57 | AvarStrings.swift — category | Symbols | Символы | **ГӀаламатал** | гӏаламат = знак; alternative: keep loan «Символал» |
 | 58 | AvarStrings.swift — category | Flags | Флаги | **Байрахъал** | байрахъ = флаг, знамя |
 
-## 2. Подписи к стикерам (только метаданные, в приложении не отображаются)
+## 2. Подписи к стикерам (удалено)
 
-| # | Стикер | English | Русский | Аварский (текущий) | Комментарий |
-|---|---|---|---|---|---|
-| 1 | `salam` | Hello! | Салам!/Привет! | **Салам!** | universal greeting, unchanged |
-| 2 | `thanks` | Thank you! | Спасибо! | **Баркала!** |  |
-| 3 | `sweetheart` | Sweetheart! | Дорогой! / Джан! | **Хирияв!** | reviewer: «хирияв» (м.р.) / «хирияй» (ж.р.) обычны у аварцев; принята мужская форма, как и в `loveyou` |
-| 4 | `great` | Great! | Отлично! | **ЛъикӀ буго!** | «хорошо есть» |
-| 5 | `yes` | Yes | Да / Конечно | **Гьай-гьай!** | = конечно; plain «У» felt too short for a sticker — please verify |
-| 6 | `no` | No | Нет | **ГьечӀо!** |  |
-| 7 | `howareyou` | How are you? | Как дела? | **Иш кин бугеб?** | «как дело?» — please verify idiom |
-| 8 | `loveyou` | I love you | Я тебя люблю | **Дие мун вокьула** | masculine addressee; feminine variant «Дие мун йокьула» — sticker can only carry one |
-| 9 | `sorry` | Sorry / Forgive me | Прости | **ТӀаса лъугьа!** | imperative of тӏаса лъугьине = прощать |
-| 10 | `bravo` | Bravo! / Well done! | Молодец! | **БахӀарчи!** | бахӏарчи = герой, молодец — please verify usage |
-| 11 | `congrats` | Congratulations! | Поздравляю! | **Баркула!** | from баркизе = поздравлять |
-| 12 | `welcome` | Welcome! | Добро пожаловать! | **ЛъикӀ щварал!** | plural addressee — please verify form |
-| 13 | `comehere` | Come here! | Иди сюда! | **ВачӀа!** | masculine addressee (в-class) |
-| 14 | `morning` | Good morning! | Доброе утро! | **ВорчӀами!** | Gimbatov: «с добрым утром, здравствуй» |
-| 15 | `angry` | Enough! | Хватит! | **ГӀела!** | from гӏезе — please verify |
-| 16 | `goodnight` | Good night! | Спокойной ночи! | **Сордо лъикӀ!** | сордо = ночь |
-| 17 | `prayer` | Amen! | Аминь! | **Амин!** | unchanged |
-| 18 | `lezginka` | Dance! | Танцуй! | **Кьурде!** | imperative of кьурдизе = плясать |
-| 19 | `khinkal` | Bon appétit! | Приятного аппетита! | **Бисмилла!** | customary before a meal — please confirm it suits the sticker |
-| 20 | `avarflag` | The Avars | Аварцы | **МагӀарулал** | Avar self-designation |
+Стикеры убраны из приложения в октябре 2026 года, поэтому их 20 подписей
+больше не нужны. Прежний текст раздела остаётся в истории git.
 
 ## 2а. Добавлено после проверки (ожидает вашей оценки)
 

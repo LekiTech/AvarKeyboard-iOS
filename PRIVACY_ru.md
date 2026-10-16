@@ -26,8 +26,6 @@
   шестерёнкой), и они удаляются вместе с приложением.
 - **Никакой аналитики и рекламы.** В приложении нет счётчиков,
   трекеров, рекламных SDK и идентификаторов.
-- **Стикеры.** Стикер-паки для iMessage, WhatsApp и Telegram не
-  собирают никаких данных.
 
 ## Изменения политики
 
@@ -57,7 +55,6 @@ to collect no data at all.
   suggestions are stored only in the app's local storage, can be
   reviewed and deleted from the keyboard's settings (gear key), and are
   removed together with the app.
-- **No analytics, no ads, no trackers.** The sticker packs for
-  iMessage, WhatsApp, and Telegram collect nothing either.
+- **No analytics, no ads, no trackers.**
 
 Questions: **lezgikeyboard@gmail.com**
