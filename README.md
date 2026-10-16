@@ -63,8 +63,8 @@ Twenty illustrated stickers of an eagle chick in a papakha.
 - `AvarKeyboard/AvarKeyboardExtension/` — the keyboard extension: the Avar
   `KeyboardDefinition` (`AvarDefinition`, `AvarLayout`, `AvarStrings`,
   `AvarIdentity`), the principal class, the dictionary artifacts and plists.
-  Engine code lives in General Keyboard, linked as a local Swift Package:
-  check out `GeneralKeyboard-iOS` next to this repository before building
+  Engine code lives in General Keyboard, linked as a local Swift Package
+  (see [Building](#building))
 - `Package.swift`, `Tests/AvarCoreTests/` — product tests (definition,
   persisted-state characterization, pixel snapshots, shipped artifacts),
   run through the General Keyboard engine
@@ -74,6 +74,28 @@ Twenty illustrated stickers of an eagle chick in a papakha.
   catalog generator moved to General Keyboard)
 - `docs/` — product documents, plus engine documentation inherited from the
   Lezgi project (the maintained copies live in `GeneralKeyboard-iOS/docs/engine/`)
+
+## Building
+
+The keyboard engine is the shared **General Keyboard** Swift Package,
+`GeneralKeyboard-iOS`, a private LekiTech repository; building needs read
+access to it. Clone it next to this repository and use the `main` branches
+of both:
+
+```
+<workspace>/
+  GeneralKeyboard-iOS/   git clone https://github.com/LekiTech/GeneralKeyboard-iOS.git
+  AvarKeyboard-iOS/      this repository
+```
+
+The Xcode project finds the package at `../../GeneralKeyboard-iOS`
+(relative to `AvarKeyboard/AvarKeyboard.xcodeproj`) and `Package.swift` at
+`../GeneralKeyboard-iOS`. The product tests run with:
+
+```
+xcodebuild test -scheme AvarCoreTests-Package \
+  -destination 'platform=iOS Simulator,name=iPhone 18 Pro,OS=27.0'
+```
 
 ## Third-party components
 

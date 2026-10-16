@@ -28,3 +28,6 @@ fastlane/test_output
 # SwiftPM test package (sources live in the app target; only the manifest is ours)
 .build/
 __pycache__/
+
+# Snapshot test failures (written next to the reference images)
+Tests/AvarCoreTests/Snapshots/_failures/
