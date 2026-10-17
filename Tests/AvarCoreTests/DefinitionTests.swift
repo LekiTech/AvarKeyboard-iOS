@@ -50,9 +50,15 @@ final class AvarDefinitionTests: AvarTestCase {
         single.defaultStyle = .fourRow
         XCTAssertFalse(single.showsSelector, "one style: no selector even when requested")
         XCTAssertEqual(single.resolve("threeRow"), .fourRow, "unsupported persisted value")
-        XCTAssertEqual(single.validationErrors(), [])
+        // Callout keys are compared the way the definition lowercases text
+        // (keeping the visible palochka Ӏ)
+        let definition = d
+        let lower = { (s: String) in
+            definition.text.visibleLowercased(s, canonicalPalochka: definition.normalization.palochka)
+        }
+        XCTAssertEqual(single.validationErrors(lowercase: lower), [])
         single.defaultStyle = .threeRow
-        XCTAssertFalse(single.validationErrors().isEmpty, "default must be offered")
+        XCTAssertFalse(single.validationErrors(lowercase: lower).isEmpty, "default must be offered")
     }
 
     func testPresentationConventions() {

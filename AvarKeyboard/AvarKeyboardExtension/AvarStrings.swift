@@ -64,7 +64,7 @@ enum AvarStrings {
     )
 
     static let keys = KeyLabels(
-        space: "Гьоркьобакӏ",
+        space: "ГьоркьобакӀ",
         spaceCornerLabel: "АВАР",
         keyboardName: "Авар мацӀ",
         lettersKey: "аиу",
@@ -72,8 +72,8 @@ enum AvarStrings {
         emojiPageLettersKey: "АБВ",
         returnLabels: [
             .go: "Рагьизе",
-            .send: "Битӏизе",
-            .done: "Лъугӏана",
+            .send: "БитӀизе",
+            .done: "ЛъугӀана",
             .next: "Хадусеб",
             .`continue`: "Цебехун",
             .join: "Цолъизе",

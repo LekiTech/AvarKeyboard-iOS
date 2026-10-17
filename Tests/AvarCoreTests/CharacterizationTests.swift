@@ -197,10 +197,9 @@ final class KeyboardModelCharacterizationTests: AvarTestCase {
                        KeyboardLayout.letterRows(style: .fourRow))
     }
 
-    // Presentation of the palochka (BASELINE.md §8, finding 3): stored rows
-    // are canonical "ӏ" (U+04CF); predictive candidates and the
-    // saved-words list show "Ӏ" (U+04C0); the quoted literal keeps the
-    // typed form.
+    // Presentation of the palochka: stored rows are canonical "ӏ" (U+04CF);
+    // keys, predictive candidates and the saved-words list carry "Ӏ"
+    // (U+04C0); the quoted literal keeps the text already in the document.
 
     func testSavedWordsShowTheVisiblePalochka() {
         let m = model(learnedWords: ["цӏияб", "гьабуна"])
@@ -303,7 +302,7 @@ final class LanguageConstantsCharacterizationTests: AvarTestCase {
             (.shift, "⇧", "⇧"), (.backspace, "⌫", "⌫"), (.numbers, "123", "123"),
             (.symbols, "#+=", "#+="), (.letters, "аиу", "АИУ"), (.globe, "🌐", "🌐"),
             (.emoji, "😀", "😀"), (.settings, "", ""), (.spacer(0.25), "", ""),
-            (.space, "Гьоркьобак\u{04CF}", "Гьоркьобак\u{04CF}"), (.return, "", ""),
+            (.space, "Гьоркьобак\u{04C0}", "Гьоркьобак\u{04C0}"), (.return, "", ""),
         ]
         for (cap, plain, shifted) in expected {
             XCTAssertEqual(KeyboardLayout.label(for: cap, shifted: false), plain, "\(cap)")

@@ -25,9 +25,9 @@ enum AvarDefinition {
         layout: AvarLayout.capabilities,
         keys: AvarStrings.keys,
         text: TextConventions(
-            // Project-wide convention: everything the user SEES carries the
-            // typed uppercase palochka Ӏ (U+04C0); every stored row keeps
-            // the canonical ӏ (U+04CF).
+            // Project-wide convention: everything the user sees and types
+            // carries the palochka Ӏ (U+04C0); lookup keys and every stored
+            // row keep its case folding ӏ (U+04CF).
             visiblePalochka: "\u{04C0}",
             // Ӏ is category Lu but caseless by convention: «ЦӀ» is a
             // capitalized digraph, not an ALL-CAPS prefix.
