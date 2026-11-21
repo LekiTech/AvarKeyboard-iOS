@@ -93,8 +93,8 @@ Learned candidates:
 ORDER BY … DESC, last_used DESC
 ```
 
-Gates: `count + picked >= minVisibleUses` (learning speed: 1 fast — the
-product default, 3 normal, 5 conservative) and `LENGTH(word) >= 2`.
+Gates: `count + picked >= minVisibleUses` (learning speed: 1 fast, 3 normal
+— the product default, 5 conservative) and `LENGTH(word) >= 2`.
 
 Next-word candidates: `count × (recent ? 2 : 1)`, gated at `count >= 2`.
 
@@ -152,7 +152,7 @@ queue: all database work happens on the main thread inside the extension.
 
 Covered (22 tests): schema and WAL, persistence across reopen, the whole
 learnability filter, lowercasing, count/picked semantics and the 3× pick
-weight, the visibility threshold and the fast default, the bigram gate and
+weight, the visibility threshold and a bare store's lowest threshold, the bigram gate and
 its ranking boost, `isRecognized`, saved-words filtering and ordering,
 deletion cascading to pairs, reset preserving metrics, metric counters,
 decay (2000 events, halving, one-off removal), and a performance guard on

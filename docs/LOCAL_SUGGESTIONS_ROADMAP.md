@@ -53,8 +53,8 @@ replaces custom keyboards with the system one, so passwords are never seen.
 - [x] Words are stored from the first use; the visibility threshold is
       user-adjustable (fast 1 / normal 3 / conservative 5) — only the
       threshold changes, never the learning itself. The product default is
-      fast (1): words surface immediately, and the stricter thresholds
-      remain available as typo protection
+      normal (3): a typo made once or twice never surfaces; fast (1) and
+      conservative (5) remain the user's choice
 - [x] Suggestions follow the capitalization context (sentence start, empty
       field, Shift, Caps Lock) — consistently for learned and dictionary words
 - [x] Long-press on a learned suggestion offers to remove it from

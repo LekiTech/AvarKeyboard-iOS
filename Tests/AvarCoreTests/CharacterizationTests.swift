@@ -48,10 +48,40 @@ final class SettingsPersistenceCharacterizationTests: AvarTestCase {
         XCTAssertTrue(s.doubleSpacePeriod)
         XCTAssertTrue(s.spaceCursor)
         XCTAssertTrue(s.spaceLabel)
-        XCTAssertEqual(s.learnSpeed, .fast)
+        XCTAssertEqual(s.learnSpeed, .normal)
         XCTAssertEqual(s.calloutDelay, .normal)
         XCTAssertEqual(s.theme, .system)
         XCTAssertEqual(s, KeyboardSettings())
+    }
+
+    /// A fresh install has no stored learning speed and gets Normal: a word
+    /// is suggested after three uses. Reading the settings stores nothing,
+    /// so the install keeps following the default until the user chooses.
+    func testFreshInstallDefaultsToNormalLearningAfterThreeUses() {
+        XCTAssertNil(defaults.object(forKey: "set_learnSpeed"))
+        let s = KeyboardSettings.load(from: defaults)
+        XCTAssertEqual(s.learnSpeed, .normal)
+        XCTAssertEqual(s.learnSpeed.minUses, 3)
+        XCTAssertEqual(KeyboardSettings().learnSpeed, .normal)
+        XCTAssertNil(defaults.object(forKey: "set_learnSpeed"), "load must not persist the default")
+        XCTAssertEqual(KeyboardSettings.LearnSpeed.fast.minUses, 1)
+        XCTAssertEqual(KeyboardSettings.LearnSpeed.conservative.minUses, 5)
+    }
+
+    /// A learning speed the user saved is never replaced by the default:
+    /// Fast stays Fast, Slow stays Slow, across loads and saves.
+    func testAStoredLearningSpeedSurvivesTheDefault() {
+        for (raw, speed) in [("fast", KeyboardSettings.LearnSpeed.fast), ("normal", .normal),
+                             ("conservative", .conservative)] {
+            defaults.set(raw, forKey: "set_learnSpeed")
+            var s = KeyboardSettings.load(from: defaults)
+            XCTAssertEqual(s.learnSpeed, speed, raw)
+            // Another setting changes; everything is saved again
+            s.spaceCursor.toggle()
+            s.save(to: defaults)
+            XCTAssertEqual(defaults.string(forKey: "set_learnSpeed"), raw)
+            XCTAssertEqual(KeyboardSettings.load(from: defaults).learnSpeed, speed, raw)
+        }
     }
 
     func testSaveWritesExactlyTheNinePersistedKeys() throws {
@@ -111,7 +141,7 @@ final class SettingsPersistenceCharacterizationTests: AvarTestCase {
         // NSNumber bridging: an integer 0 is honored as false.
         defaults.set(0, forKey: "set_spaceCursor")
         let s = KeyboardSettings.load(from: defaults)
-        XCTAssertEqual(s.learnSpeed, .fast)
+        XCTAssertEqual(s.learnSpeed, .normal)
         XCTAssertEqual(s.calloutDelay, .normal)
         XCTAssertEqual(s.theme, .system)
         XCTAssertTrue(s.spaceLabel)
@@ -158,9 +188,99 @@ final class KeyboardModelCharacterizationTests: AvarTestCase {
         fresh.updateSettings { $0.spaceCursor = false }
         let d = UserDefaults.standard
         XCTAssertEqual(d.object(forKey: "set_spaceCursor") as? Bool, false)
-        XCTAssertEqual(d.string(forKey: "set_learnSpeed"), "fast")
+        XCTAssertEqual(d.string(forKey: "set_learnSpeed"), "normal")
         XCTAssertEqual(d.string(forKey: "set_theme"), "system")
         XCTAssertEqual(d.object(forKey: "set_wordSuggestions") as? Bool, true)
+    }
+
+    // Learning speed. The default is Normal: a word is suggested after
+    // three uses. Only the visibility threshold differs between the speeds;
+    // every use is counted from the first one, whatever the setting.
+
+    /// Types words the way the keys do; a space completes (and learns) one.
+    private func type(_ text: String, into m: KeyboardModel, proxy: MockTextDocumentProxy) {
+        for ch in text {
+            m.handleKey(ch == " " ? .space : .character(String(ch)), proxy: proxy)
+            m.updateSuggestions(proxy: proxy)
+        }
+    }
+
+    func testAFreshInstallSuggestsAWordAfterThreeUses() {
+        let m = model()
+        XCTAssertNil(UserDefaults.standard.object(forKey: "set_learnSpeed"))
+        XCTAssertEqual(m.settings.learnSpeed, .normal)
+        m.shiftState = .off
+        let proxy = MockTextDocumentProxy()
+        for uses in 1...2 {
+            type("гьабуна ", into: m, proxy: proxy)
+            type("гьаб", into: m, proxy: proxy)
+            XCTAssertFalse(m.suggestions.contains("гьабуна"), "\(uses) of 3 uses")
+            XCTAssertEqual(m.savedWords(), [], "\(uses) of 3 uses")
+            for _ in 0..<4 { m.handleKey(.backspace, proxy: proxy) }
+        }
+        type("гьабуна ", into: m, proxy: proxy)
+        type("гьаб", into: m, proxy: proxy)
+        XCTAssertEqual(m.suggestions, ["гьаб", "гьабуна"])
+        XCTAssertEqual(m.savedWords(), ["гьабуна"])
+    }
+
+    func testASavedFastOrSlowChoiceKeepsItsThreshold() {
+        let fast = model(settings: .with { $0.learnSpeed = .fast })
+        XCTAssertEqual(fast.settings.learnSpeed, .fast)
+        fast.shiftState = .off
+        var proxy = MockTextDocumentProxy()
+        type("гьабуна ", into: fast, proxy: proxy)
+        XCTAssertEqual(fast.savedWords(), ["гьабуна"], "Fast: from the first use")
+        // A new keyboard (new model) still reads the saved choice
+        XCTAssertEqual(KeyboardModel().settings.learnSpeed, .fast)
+
+        let slow = model(settings: .with { $0.learnSpeed = .conservative })
+        XCTAssertEqual(slow.settings.learnSpeed, .conservative)
+        slow.shiftState = .off
+        proxy = MockTextDocumentProxy()
+        for _ in 1...4 { type("гьабуна ", into: slow, proxy: proxy) }
+        XCTAssertEqual(slow.savedWords(), [], "Slow: four uses are not enough")
+        type("гьабуна ", into: slow, proxy: proxy)
+        XCTAssertEqual(slow.savedWords(), ["гьабуна"], "Slow: after five uses")
+        XCTAssertEqual(KeyboardModel().settings.learnSpeed, .conservative)
+    }
+
+    /// An install that learned its words before Normal became the default
+    /// and never stored a learning speed: nothing is deleted and no counter
+    /// is reset. Words used three times or more are suggested as before; a
+    /// word used once waits, with its count, for two more uses, or for the
+    /// user to pick Fast.
+    func testWordsLearnedUnderTheOldDefaultArePreserved() throws {
+        KeyboardTestEnvironment.resetPersistentState()
+        let existing = try XCTUnwrap(LearnedWords())
+        existing.learn("гьабуна", previous: nil, picked: false)
+        for _ in 1...3 { existing.learn("цӏияб", previous: nil, picked: false) }
+
+        let m = KeyboardModel()
+        XCTAssertNil(UserDefaults.standard.object(forKey: "set_learnSpeed"))
+        XCTAssertEqual(m.settings.learnSpeed, .normal)
+        XCTAssertEqual(m.savedWords(), ["цӀияб"])
+        // Both rows are still in the store, with their counts
+        let store = try XCTUnwrap(LearnedWords())
+        XCTAssertEqual(Set(store.topWords(limit: 10)), ["гьабуна", "цӏияб"])
+        XCTAssertTrue(store.isRecognized("гьабуна"))
+        // Two more uses bring the earlier word back: 1 + 2 = 3
+        m.shiftState = .off
+        let proxy = MockTextDocumentProxy()
+        type("гьабуна ", into: m, proxy: proxy)
+        XCTAssertEqual(m.savedWords(), ["цӀияб"])
+        type("гьабуна ", into: m, proxy: proxy)
+        XCTAssertEqual(Set(m.savedWords()), ["цӀияб", "гьабуна"])
+    }
+
+    func testChoosingFastShowsEveryStoredWordAgain() throws {
+        KeyboardTestEnvironment.resetPersistentState()
+        try XCTUnwrap(LearnedWords()).learn("гьабуна", previous: nil, picked: false)
+        let m = KeyboardModel()
+        XCTAssertEqual(m.savedWords(), [])
+        m.updateSettings { $0.learnSpeed = .fast }
+        XCTAssertEqual(m.savedWords(), ["гьабуна"])
+        XCTAssertEqual(UserDefaults.standard.string(forKey: "set_learnSpeed"), "fast")
     }
 
     func testRecentEmojisAreMostRecentFirstDedupedAndCappedAt24() {

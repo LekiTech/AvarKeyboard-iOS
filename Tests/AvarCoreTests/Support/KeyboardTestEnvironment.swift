@@ -48,7 +48,13 @@ enum KeyboardTestEnvironment {
         if !recentEmojis.isEmpty { defaults.set(recentEmojis, forKey: "recentEmojis") }
         settings?.save(to: defaults)
         if !learnedWords.isEmpty, let seed = LearnedWords() {
-            for word in learnedWords { seed.learn(word, previous: nil, picked: false) }
+            // A learned word is one the keyboard already suggests: used as
+            // often as the learning speed in effect asks for (the default
+            // is normal, three uses).
+            let uses = (settings ?? KeyboardSettings()).learnSpeed.minUses
+            for word in learnedWords {
+                for _ in 0..<uses { seed.learn(word, previous: nil, picked: false) }
+            }
         }
         let model = KeyboardModel()
         configure(model)
